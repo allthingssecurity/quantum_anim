@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Concept Simulations</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; overflow: hidden; }
+        h1, h2, h3, button { font-family: 'Exo 2', sans-serif; }
+        .neon-text { text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+        .active-tab { background-color: rgba(56, 189, 248, 0.2); border-left: 4px solid #38bdf8; color: #38bdf8; }
+        .inactive-tab { border-left: 4px solid transparent; color: #94a3b8; }
+        .inactive-tab:hover { background-color: rgba(30, 41, 59, 0.5); color: #cbd5e1; }
+        canvas { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); border-radius: 12px; box-shadow: inset 0 0 50px rgba(0,0,0,0.5); width: 100%; height: 100%; }
+        .control-panel { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border-top: 1px solid rgba(56, 189, 248, 0.2); }
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #38bdf8; cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px #38bdf8; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #475569; border-radius: 2px; }
+    </style>
+    <meta name="description" content="Interactive canvas simulations of core quantum concepts: double slit, superposition, entanglement, and tunneling.">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body class="flex h-screen w-screen">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col z-20 shadow-xl">
+        <div class="p-6 border-b border-slate-800">
+            <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500 neon-text">
+                <i class="fa-solid fa-atom mr-2"></i>Quantum Sim
+            </h1>
+            <p class="text-xs text-slate-500 mt-2 uppercase tracking-widest">Interactive Labs</p>
+        </div>
+        
+        <nav class="flex-1 overflow-y-auto py-4">
+            <button onclick="switchSim('duality')" id="btn-duality" class="w-full text-left px-6 py-4 transition-all duration-200 active-tab flex items-center group">
+                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center mr-3 group-hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-water text-cyan-400"></i>
+                </div>
+                <div>
+                    <div class="font-bold">Wave-Particle</div>
+                    <div class="text-xs opacity-70">The Double Slit</div>
+                </div>
+            </button>
+            
+            <button onclick="switchSim('superposition')" id="btn-superposition" class="w-full text-left px-6 py-4 transition-all duration-200 inactive-tab flex items-center group">
+                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center mr-3 group-hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-cat text-purple-400"></i>
+                </div>
+                <div>
+                    <div class="font-bold">Superposition</div>
+                    <div class="text-xs opacity-70">Schrödinger's State</div>
+                </div>
+            </button>
+
+            <button onclick="switchSim('entanglement')" id="btn-entanglement" class="w-full text-left px-6 py-4 transition-all duration-200 inactive-tab flex items-center group">
+                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center mr-3 group-hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-link text-pink-400"></i>
+                </div>
+                <div>
+                    <div class="font-bold">Entanglement</div>
+                    <div class="text-xs opacity-70">Spooky Action</div>
+                </div>
+            </button>
+            
+            <button onclick="switchSim('tunneling')" id="btn-tunneling" class="w-full text-left px-6 py-4 transition-all duration-200 inactive-tab flex items-center group">
+                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center mr-3 group-hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-ghost text-emerald-400"></i>
+                </div>
+                <div>
+                    <div class="font-bold">Tunneling</div>
+                    <div class="text-xs opacity-70">Crossing Barriers</div>
+                </div>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+            Canvas Rendering Engine
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col relative h-full">
+        <!-- Simulation Canvas Container -->
+        <div class="flex-1 relative bg-black p-4 overflow-hidden" id="canvas-container">
+            <canvas id="simCanvas"></canvas>
+            <!-- Overlay Text / Explainer -->
+            <div id="explainer-text" class="absolute top-8 left-8 max-w-md pointer-events-none select-none">
+                <h2 id="sim-title" class="text-3xl font-bold text-white mb-2 drop-shadow-md">Double Slit Experiment</h2>
+                <p id="sim-desc" class="text-slate-300 text-sm leading-relaxed drop-shadow-md bg-slate-900/50 p-2 rounded backdrop-blur-sm border border-slate-700/50">
+                    Particles are fired at a barrier with two slits. Watch how they form an interference pattern (waves) or two distinct bands (particles) depending on whether they are observed.
+                </p>
+            </div>
+        </div>
+
+        <!-- Controls Footer -->
+        <div class="h-24 control-panel px-8 flex items-center justify-between shrink-0 z-10">
+            <div class="flex items-center space-x-8 w-full" id="controls-area"></div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SETUP & UTILS ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let animationId;
+        let currentSim = 'duality';
+
+        const state = {
+            duality: { particles: [], observed: false, fireRate: 2, screenHits: [] },
+            superposition: { isMeasured: false, angle: 0, speed: 0.2, value: null },
+            entanglement: { particles: [ { x: -100, y: 0, spin: null, color: '#fff' }, { x: 100, y: 0, spin: null, color: '#fff' } ], isMeasured: false, distance: 200 },
+            tunneling: { particles: [], probability: 0.05, attempts: 0, successes: 0 }
+        };
+
+        function resize() {
+            width = canvas.parentElement.clientWidth;
+            height = canvas.parentElement.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- 2. SIMULATION LOGIC ---
+        function updateDuality() {
+            const s = state.duality;
+            if (Math.random() < 0.5) {
+                s.particles.push({ x: 50, y: height / 2, vx: 4, vy: (Math.random() - 0.5) * 1, stage: 0, phase: 0 });
+            }
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(0, height/2 - 20, 60, 40);
+            const barrierX = width * 0.3;
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(barrierX, 0, 10, height);
+            ctx.clearRect(barrierX, height/2 - 40, 10, 20);
+            ctx.clearRect(barrierX, height/2 + 20, 10, 20);
+            if (s.observed) {
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+                ctx.beginPath();
+                ctx.arc(barrierX, height/2 - 80, 30, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = '24px FontAwesome';
+                ctx.fillText('\uf06e', barrierX - 12, height/2 - 72);
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.1)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(barrierX, height/2 - 80);
+                ctx.lineTo(barrierX, height/2 - 40);
+                ctx.moveTo(barrierX, height/2 - 80);
+                ctx.lineTo(barrierX, height/2 + 20);
+                ctx.stroke();
+            }
+            const screenX = width * 0.9;
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(screenX, 0, 20, height);
+            for (let i = s.particles.length - 1; i >= 0; i--) {
+                let p = s.particles[i];
+                p.x += p.vx; p.y += p.vy;
+                ctx.fillStyle = s.observed ? '#f472b6' : '#22d3ee';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+                ctx.fill();
+                if (p.stage === 0 && p.x > barrierX) {
+                    const hitTop = (p.y > height/2 - 45 && p.y < height/2 - 15);
+                    const hitBot = (p.y > height/2 + 15 && p.y < height/2 + 45);
+                    if (hitTop || hitBot) {
+                        p.stage = 1;
+                        // Updated diffraction logic
+                        if (s.observed) {
+                            // Particle-like (observed): two distinct bands behind each slit
+                            let targetY;
+                            const spread = (Math.random() - 0.5) * 40; // small pellet-like spread
+                            if (hitTop) {
+                                targetY = (height / 2) - 40 + spread;
+                            } else {
+                                targetY = (height / 2) + 40 + spread;
+                            }
+                            const dx = screenX - barrierX;
+                            const dy = targetY - p.y;
+                            p.vy = (dy / dx) * p.vx;
+                        } else {
+                            // Wave-like (unobserved): interference pattern with multiple bands
+                            const bands = [0, 1, -1, 2, -2];
+                            const bandIndex = bands[Math.floor(Math.random() * bands.length)];
+                            const spacing = 45; // pixels between interference maxima
+                            const spread = (Math.random() - 0.5) * 10; // tight within-band spread
+                            const targetY = (height / 2) + (bandIndex * spacing) + spread;
+                            const dx = screenX - barrierX;
+                            const dy = targetY - p.y;
+                            p.vy = (dy / dx) * p.vx;
+                        }
+                    } else {
+                        s.particles.splice(i, 1);
+                        continue;
+                    }
+                }
+                if (p.x > screenX) {
+                    s.screenHits.push(p.y);
+                    if (s.screenHits.length > 200) s.screenHits.shift();
+                    s.particles.splice(i, 1);
+                }
+            }
+            ctx.fillStyle = s.observed ? 'rgba(244, 114, 182, 0.1)' : 'rgba(34, 211, 238, 0.1)';
+            for (let y of s.screenHits) {
+                ctx.beginPath();
+                ctx.arc(screenX + 10, y, 6, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+
+        function updateSuperposition() {
+            const s = state.superposition;
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+            const cx = width / 2, cy = height / 2, radius = 100;
+            ctx.strokeStyle = '#334155'; ctx.lineWidth = 2; ctx.strokeRect(cx - 150, cy - 150, 300, 300);
+            if (!s.isMeasured) {
+                s.angle += s.speed;
+                for(let i=0; i<6; i++) {
+                    ctx.beginPath(); ctx.globalAlpha = 0.2;
+                    let offset = (Math.PI * 2 / 6) * i + s.angle;
+                    let colorMix = Math.sin(s.angle * 2 + i);
+                    ctx.fillStyle = colorMix > 0 ? '#38bdf8' : '#a855f7';
+                    let orbX = cx + Math.cos(offset) * 40 * Math.sin(s.angle);
+                    let orbY = cy + Math.sin(offset) * 40;
+                    ctx.arc(orbX, orbY, radius * 0.8, 0, Math.PI*2); ctx.fill();
+                }
+                ctx.globalAlpha = 1.0;
+                ctx.fillStyle = '#fff'; ctx.font = '20px Exo 2'; ctx.textAlign = 'center';
+                ctx.fillText("State: |Ψ⟩ = α|0⟩ + β|1⟩", cx, cy + 200);
+            } else {
+                ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI*2);
+                if (s.value === 0) {
+                    ctx.fillStyle = '#38bdf8'; ctx.fill();
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 60px Exo 2'; ctx.textAlign = 'center'; ctx.fillText('0', cx, cy + 20);
+                } else {
+                    ctx.fillStyle = '#a855f7'; ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.font = 'bold 60px Exo 2'; ctx.textAlign = 'center'; ctx.fillText('1', cx, cy + 20);
+                }
+                ctx.fillStyle = '#fff'; ctx.font = '20px Exo 2'; ctx.textAlign = 'center'; ctx.fillText('Wavefunction Collapsed', cx, cy + 200);
+            }
+        }
+
+        function updateEntanglement() {
+            const s = state.entanglement;
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, width, height);
+            const cx = width / 2, cy = height / 2;
+            if (!s.isMeasured) { ctx.strokeStyle = `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.2})`; ctx.setLineDash([5,5]); }
+            else { ctx.strokeStyle = 'rgba(56, 189, 248, 0.1)'; ctx.setLineDash([]); }
+            ctx.beginPath(); ctx.moveTo(cx - s.distance, cy); ctx.lineTo(cx + s.distance, cy); ctx.stroke(); ctx.setLineDash([]);
+            s.particles.forEach((p, index) => {
+                let px = index === 0 ? cx - s.distance : cx + s.distance;
+                if (!s.isMeasured && Math.random() < 0.1) { p.spin = Math.random() > 0.5 ? 'UP' : 'DOWN'; p.color = p.spin === 'UP' ? '#38bdf8' : '#a855f7'; }
+                ctx.beginPath(); ctx.fillStyle = p.color; ctx.shadowBlur = 20; ctx.shadowColor = p.color; ctx.arc(px, cy, 30, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Inter'; ctx.textAlign = 'center'; ctx.fillText(index === 0 ? 'Particle A' : 'Particle B', px, cy - 50);
+                if (s.isMeasured) { ctx.fillStyle = '#fff'; ctx.font = '24px FontAwesome'; let icon = p.spin === 'UP' ? '\uf062' : '\uf063'; ctx.fillText(icon, px, cy + 10); }
+                else { ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = '20px Inter'; ctx.fillText('?', px, cy + 8); }
+            });
+            ctx.fillStyle = '#64748b'; ctx.fillText(Math.round(s.distance * 2) + ' light years (simulated)', cx, cy + 20);
+        }
+
+        function updateTunneling() {
+            const s = state.tunneling;
+            if (s.particles.length < 1) { s.particles.push({ x: 50, y: height / 2, vx: 8, color: '#fbbf24' }); }
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, width, height);
+            const wallX = width / 2, wallW = 40;
+            ctx.fillStyle = '#ef4444'; ctx.shadowBlur = 10; ctx.shadowColor = '#ef4444'; ctx.fillRect(wallX, height/4, wallW, height/2); ctx.shadowBlur = 0;
+            ctx.fillStyle = '#fff'; ctx.fillText('Potential Barrier', wallX + 20, height/4 - 20);
+            for (let i = s.particles.length - 1; i >= 0; i--) {
+                let p = s.particles[i]; p.x += p.vx;
+                ctx.beginPath(); ctx.fillStyle = p.color; ctx.arc(p.x, p.y, 10, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x - p.vx*2, p.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+                if (p.x + 10 >= wallX && p.x - 10 <= wallX + wallW) {
+                    if (p.vx > 0) {
+                        s.attempts++;
+                        if (Math.random() < s.probability) { p.x = wallX + wallW + 15; p.color = '#34d399'; s.successes++; ctx.fillStyle = '#fff'; ctx.fillText('TUNNELING EVENT!', wallX, height/2 - 50); }
+                        else { p.vx *= -1; p.x = wallX - 15; }
+                    }
+                }
+                if (p.x < 0 || p.x > width) { s.particles.splice(i, 1); }
+            }
+            ctx.fillStyle = '#94a3b8'; ctx.font = '16px Inter'; ctx.textAlign = 'left';
+            ctx.fillText(`Attempts: ${s.attempts}`, 20, height - 50);
+            ctx.fillText(`Successful Tunnels: ${s.successes}`, 20, height - 30);
+            ctx.fillText(`Tunnel Probability: ${(s.probability * 100).toFixed(1)}%`, 20, height - 10);
+        }
+
+        // --- 3. MAIN LOOP & CONTROL HANDLING ---
+        function loop() {
+            if (currentSim === 'duality') updateDuality();
+            else if (currentSim === 'superposition') updateSuperposition();
+            else if (currentSim === 'entanglement') updateEntanglement();
+            else if (currentSim === 'tunneling') updateTunneling();
+            animationId = requestAnimationFrame(loop);
+        }
+
+        function switchSim(simName) {
+            currentSim = simName;
+            document.querySelectorAll('nav button').forEach(b => { b.classList.remove('active-tab'); b.classList.add('inactive-tab'); });
+            document.getElementById('btn-' + simName).classList.add('active-tab');
+            document.getElementById('btn-' + simName).classList.remove('inactive-tab');
+            const titles = { duality: 'Wave-Particle Duality', superposition: 'Quantum Superposition', entanglement: 'Quantum Entanglement', tunneling: 'Quantum Tunneling' };
+            const descs = {
+                duality: 'Particles fired through double slits interfere with themselves like waves (cyan). However, if an Observer watches (pink eye), the wave function collapses, and they behave like solid particles.',
+                superposition: 'A quantum system exists in all possible states at once (blur). It has no definite value until measured. Click "Measure" to force nature to choose.',
+                entanglement: 'Two particles share a single quantum state. Measuring one instantaneously determines the state of the other, no matter the distance. Change one, and the other reacts instantly.',
+                tunneling: 'In the classical world, a ball cannot bounce through a solid wall. In the quantum world, there is a non-zero probability that a particle can "tunnel" through a barrier it shouldn\'t be able to cross.'
+            };
+            document.getElementById('sim-title').innerText = titles[simName];
+            document.getElementById('sim-desc').innerText = descs[simName];
+            loadControls(simName);
+        }
+
+        function loadControls(sim) {
+            const area = document.getElementById('controls-area');
+            area.innerHTML = '';
+            if (sim === 'duality') {
+                const btn = document.createElement('button');
+                btn.className = 'px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded font-bold transition flex items-center';
+                btn.innerHTML = `<i class="fa-solid fa-eye mr-2"></i> Toggle Observer`;
+                btn.onclick = () => { state.duality.observed = !state.duality.observed; state.duality.screenHits = []; };
+                const clearBtn = document.createElement('button');
+                clearBtn.className = 'px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold transition ml-4';
+                clearBtn.innerHTML = 'Clear Screen';
+                clearBtn.onclick = () => state.duality.screenHits = [];
+                area.appendChild(btn); area.appendChild(clearBtn);
+            } else if (sim === 'superposition') {
+                const btn = document.createElement('button');
+                btn.className = 'px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold transition';
+                btn.innerText = 'Measure State';
+                btn.onclick = () => {
+                    if (state.superposition.isMeasured) { state.superposition.isMeasured = false; btn.innerText = 'Measure State'; btn.classList.replace('bg-slate-600', 'bg-purple-600'); }
+                    else { state.superposition.isMeasured = true; state.superposition.value = Math.random() > 0.5 ? 1 : 0; btn.innerText = 'Reset System'; btn.classList.replace('bg-purple-600', 'bg-slate-600'); }
+                };
+                area.appendChild(btn);
+            } else if (sim === 'entanglement') {
+                const btn = document.createElement('button');
+                btn.className = 'px-6 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded font-bold transition';
+                btn.innerText = 'Measure Particle A';
+                btn.onclick = () => {
+                    if (state.entanglement.isMeasured) { state.entanglement.isMeasured = false; btn.innerText = 'Measure Particle A'; btn.classList.replace('bg-slate-600', 'bg-pink-600'); }
+                    else {
+                        state.entanglement.isMeasured = true;
+                        state.entanglement.particles[0].spin = Math.random() > 0.5 ? 'UP' : 'DOWN';
+                        state.entanglement.particles[0].color = state.entanglement.particles[0].spin === 'UP' ? '#38bdf8' : '#a855f7';
+                        state.entanglement.particles[1].spin = state.entanglement.particles[0].spin === 'UP' ? 'DOWN' : 'UP';
+                        state.entanglement.particles[1].color = state.entanglement.particles[1].spin === 'UP' ? '#38bdf8' : '#a855f7';
+                        btn.innerText = 'Reset Entanglement'; btn.classList.replace('bg-pink-600', 'bg-slate-600');
+                    }
+                };
+                area.appendChild(btn);
+            } else if (sim === 'tunneling') {
+                const container = document.createElement('div'); container.className = 'flex flex-col w-64';
+                const label = document.createElement('label'); label.className = 'text-sm text-slate-400 mb-1'; label.innerHTML = `Tunnel Probability: <span id='prob-val'>5%</span>`;
+                const slider = document.createElement('input'); slider.type = 'range'; slider.min = '0'; slider.max = '0.5'; slider.step = '0.01'; slider.value = '0.05';
+                slider.oninput = (e) => { state.tunneling.probability = parseFloat(e.target.value); document.getElementById('prob-val').innerText = Math.round(state.tunneling.probability * 100) + '%'; };
+                container.appendChild(label); container.appendChild(slider); area.appendChild(container);
+            }
+        }
+
+        // Init
+        loadControls('duality');
+        loop();
+    </script>
+</body>
+</html>
