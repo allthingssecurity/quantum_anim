@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QCEngine Playground — Edit & Run</title>
+  <style>
+    :root{--bg:#0b0f14;--panel:#121821;--text:#e6edf3;--muted:#93a1b0;--accent:#68a2ff;--accent2:#9a7bff}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
+    header{padding:12px 16px;border-bottom:1px solid #222}
+    header h1{margin:0;font-size:18px}
+    header p{margin:6px 0 0 0;color:var(--muted);font-size:13px}
+    main{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}
+    .panel{background:var(--panel);border-radius:10px;padding:10px}
+    h3{margin:0 0 8px 0;color:var(--muted);font-size:13px}
+    textarea{width:100%;height:360px;background:#0f1620;color:var(--text);border:1px solid #243041;border-radius:8px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+    button, select, input{background:#0f1620;color:var(--text);border:1px solid #243041;border-radius:8px;padding:6px 10px;font-size:13px}
+    .row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+    .bars{display:flex;gap:6px;align-items:flex-end;height:180px}
+    .bar{flex:1;background:linear-gradient(180deg,var(--accent),var(--accent2));border-radius:6px 6px 0 0;position:relative}
+    .bar .label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted)}
+    .bar .value{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted)}
+    pre{margin:0;white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>QCEngine Playground — Edit & Run</h1>
+    <p>Write QCEngine-style code (qc/qint), run, and see histograms.</p>
+  </header>
+  <main>
+    <section class="panel">
+      <h3>Code</h3>
+      <div class="row">
+        <label>Module</label>
+        <select id="moduleSel"></select>
+        <label>Problem</label>
+        <select id="problemSel" style="min-width:260px"></select>
+        <button id="load">Load</button>
+        <span style="color:var(--muted);font-size:12px">Edit below ⤵</span>
+      </div>
+      <div class="row" style="margin-top:-6px"><span id="problemDesc" style="color:var(--muted);font-size:12px"></span></div>
+      <textarea id="code"></textarea>
+      <div class="row" style="margin-top:8px">
+        <label>Shots</label><input id="shots" type="number" min="1" max="100000" value="200" style="width:100px" />
+        <button id="runOnce">Run once</button>
+        <button id="runShots">Run shots</button>
+        <button id="reset">Reset histogram</button>
+      </div>
+    </section>
+    <section class="panel">
+      <h3>Histogram</h3>
+      <div id="hist" class="bars"></div>
+      <h3 style="margin-top:14px">Log</h3>
+      <pre id="log"></pre>
+    </section>
+  </main>
+  <script src="qcengine.js"></script>
+  <script>
+    const codeEl = document.getElementById('code');
+    const histEl = document.getElementById('hist');
+    const logEl = document.getElementById('log');
+    const shotsEl = document.getElementById('shots');
+    const runOnceBtn = document.getElementById('runOnce');
+    const runShotsBtn = document.getElementById('runShots');
+    const resetBtn = document.getElementById('reset');
+    const moduleSel = document.getElementById('moduleSel');
+    const problemSel = document.getElementById('problemSel');
+    const loadBtn = document.getElementById('load');
+    const problemDesc = document.getElementById('problemDesc');
+
+    // Problem Library (Modules -> Problems)
+    const LIB = [
+      { id:'m1', title:'1. Qubits & State Prep', items:[
+        {id:'1.1a', title:'Force |0⟩', desc:'Prepare |0⟩ repeatedly', code:`qc.reset(1); qc.write(0); qc.measure();`},
+        {id:'1.1b', title:'Force |1⟩', desc:'Prepare |1⟩ repeatedly', code:`qc.reset(1); qc.write(1); qc.measure();`},
+        {id:'1.1c', title:'X after |0⟩', desc:'Flip with X then measure', code:`qc.reset(1); qc.write(0); qc.x(0); qc.measure();`},
+        {id:'1.2', title:'Biased classical', desc:'Simulate bias via classical write', code:`qc.reset(1); if (Math.random()<0.3) qc.write(1); else qc.write(0); qc.measure();`},
+      ]},
+      { id:'m2', title:'2. Superposition', items:[
+        {id:'2.1a', title:'Hadamard 50/50', desc:'H on |0⟩', code:`qc.reset(1); qc.had(0); qc.measure();`},
+        {id:'2.1b', title:'H then H', desc:'H twice returns to |0⟩', code:`qc.reset(1); qc.had(0); qc.had(0); qc.measure();`},
+        {id:'2.2a', title:'RY(π/6)', desc:'Parameterized superposition', code:`qc.reset(1); qc.ry(0, Math.PI/6); qc.measure();`},
+        {id:'2.2b', title:'RX vs RY', desc:'Compare axes', code:`qc.reset(1); qc.rx(0, Math.PI/3); qc.measure();`},
+      ]},
+      { id:'m3', title:'3. Entanglement', items:[
+        {id:'3.1a', title:'Bell Φ+', desc:'H on q0 then CNOT', code:`qc.reset(2); qc.had(0); qc.cnot(0,1); qc.measure();`},
+        {id:'3.1b', title:'Bell Ψ+', desc:'X on q1 then entangle', code:`qc.reset(2); qc.x(1); qc.had(0); qc.cnot(0,1); qc.measure();`},
+        {id:'3.2', title:'GHZ (3q)', desc:'Entangle 3 qubits', code:`qc.reset(3); qc.had(0); qc.cnot(0,1); qc.cnot(1,2); qc.measure();`},
+      ]},
+      { id:'m4', title:'4. Gates & Small Circuits', items:[
+        {id:'4.1', title:'HZH = X', desc:'Conjugate Z by H', code:`qc.reset(1); qc.had(0); qc.z(0); qc.had(0); qc.measure();`},
+        {id:'4.2', title:'CNOT as XOR', desc:'Classical-style XOR', code:`qc.reset(2); qc.write(1,0); qc.write(0,1); qc.cnot(0,1); qc.measure();`},
+        {id:'4.3', title:'SWAP', desc:'Swap qubits', code:`qc.reset(2); qc.write(1,0); qc.swap(0,1); qc.measure();`},
+      ]},
+      { id:'m5', title:'5. Algorithms (Toy)', items:[
+        {id:'5.1', title:'Grover (1q, |1⟩)', desc:'Trivial Grover', code:`qc.reset(1); qc.had(0); qc.z(0); qc.had(0); qc.x(0); qc.had(0); qc.x(0); qc.had(0); qc.measure();`},
+        {id:'5.2', title:'Grover (2q, mark 10)', desc:'Oracle+diffusion', code:`qc.reset(2); qc.had(0); qc.had(1); qc.cz(1,0); qc.x(0); qc.had(0); qc.had(1); qc.z(0); qc.z(1); qc.cz(1,0); qc.had(0); qc.had(1); qc.measure();`},
+        {id:'5.3', title:'Mini-QFT (2q)', desc:'Had+CP+swap', code:`qc.reset(2); qc.write(3); qc.had(1); qc.cp(0,1,Math.PI/2); qc.had(0); qc.swap(0,1); qc.measure();`},
+        {id:'5.5', title:'TSP Toy Oracle', desc:'Phase-score routes then diffuse', code:`qc.reset(2); qc.had(0); qc.had(1); qc.phase(-40, 0b10); qc.phase(-10, 0b01); qc.phase(-5, 0b11); qc.phase(-2, 0b00); diffusion(); qc.measure();`},
+      ]},
+      { id:'m6', title:'6. Advanced Playgrounds', items:[
+        {id:'6.1', title:'Interference', desc:'H → RZ → H', code:`qc.reset(1); qc.had(0); qc.rz(0, Math.PI/3); qc.had(0); qc.measure();`},
+        {id:'6.2', title:'Noise (bit flip)', desc:'Random X after H', code:`qc.reset(1); qc.had(0); if (Math.random()<0.3) qc.x(0); qc.measure();`},
+      ]},
+    ];
+
+    function renderHist(counts, n){
+      const max = Math.max(1, ...counts);
+      histEl.innerHTML = '';
+      for (let i=0;i<counts.length;i++){
+        const b=document.createElement('div'); b.className='bar'; b.style.height=`${(counts[i]/max)*100}%`;
+        const lab=document.createElement('div'); lab.className='label'; lab.textContent=i.toString(2).padStart(n,'0');
+        const val=document.createElement('div'); val.className='value'; val.textContent=String(counts[i]);
+        b.appendChild(lab); b.appendChild(val); histEl.appendChild(b);
+      }
+    }
+
+    function run(shots){
+      const src = codeEl.value;
+      const {counts, nQubits, log} = QCEngineRunner.runProgram(src, shots);
+      renderHist(counts, nQubits);
+      logEl.textContent = log.join('\n');
+    }
+
+    function populateSelectors(){
+      moduleSel.innerHTML = '';
+      LIB.forEach((m, idx)=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=m.title; moduleSel.appendChild(o); });
+      loadProblems(LIB[0].id);
+    }
+    function loadProblems(moduleId){
+      const mod = LIB.find(m=>m.id===moduleId) || LIB[0];
+      problemSel.innerHTML='';
+      mod.items.forEach(it=>{ const o=document.createElement('option'); o.value=it.id; o.textContent=it.title; problemSel.appendChild(o); });
+      setDesc();
+    }
+    function setDesc(){
+      const mod = LIB.find(m=>m.id===moduleSel.value) || LIB[0];
+      const it = mod.items.find(i=>i.id===problemSel.value) || mod.items[0];
+      problemDesc.textContent = it ? it.desc : '';
+    }
+
+    moduleSel.addEventListener('change', ()=> loadProblems(moduleSel.value));
+    problemSel.addEventListener('change', setDesc);
+    loadBtn.addEventListener('click', ()=>{
+      const mod = LIB.find(m=>m.id===moduleSel.value) || LIB[0];
+      const it = mod.items.find(i=>i.id===problemSel.value) || mod.items[0];
+      codeEl.value = (it && it.code) ? it.code : '';
+      setDesc();
+    });
+    runOnceBtn.addEventListener('click', ()=> run(1));
+    runShotsBtn.addEventListener('click', ()=>{
+      const s = Math.max(1, Math.min(100000, parseInt(shotsEl.value,10)||200));
+      run(s);
+    });
+    resetBtn.addEventListener('click', ()=>{ renderHist([], 1); logEl.textContent=''; });
+
+    // Default: load first problem
+    populateSelectors();
+    loadBtn.click();
+  </script>
+</body>
+</html>

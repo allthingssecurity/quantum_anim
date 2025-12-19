@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QCEngine Deep Dive — Concepts + Live Demos</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header>
+    <h1>QCEngine Deep Dive</h1>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="js.html">JavaScript</a>
+      <a href="math-simple.html">QC Math</a>
+      <a href="qc-basics.html">QC Basics</a>
+      <a href="qc-explain.html">Quantum Concepts</a>
+      <a href="learn-track.html">Guided Track</a>
+      <a href="../index.html">Playground</a>
+    </nav>
+  </header>
+  <div class="wrap">
+    <div class="layout">
+      <section class="card">
+        <h2>Overview</h2>
+        <p>This page explains QCEngine’s core objects and gates with short, runnable examples. Read the explanation; then run the sample on the right and observe the histogram.</p>
+
+        <h2 id="reset">1. Reset and Initial State</h2>
+        <p><code>qc.reset(n)</code> creates <code>n</code> qubits in the basis state <code>|00…0⟩</code>. That means probability 100% on the all‑zero bitstring.</p>
+        <pre><code>// Reset to 2 qubits in |00>
+qc.reset(2);
+qc.measure(); // expect mostly 00
+</code></pre>
+
+        <h2 id="pauli">2. Pauli X, Y, Z</h2>
+        <p>
+          <strong>X</strong> flips the bit (0↔1). <strong>Z</strong> flips the <em>phase</em> of |1⟩ (probabilities unchanged, but affects interference). <strong>Y</strong> is like X plus a phase (combines flip + phase).
+        </p>
+        <h3>X — bit flip</h3>
+        <pre><code>// X turns |0> into |1>
+qc.reset(1);
+qc.x(0);
+qc.measure(); // expect mostly 1</code></pre>
+        <h3>Z — phase, no immediate probability change</h3>
+        <pre><code>// Z on |0> does nothing you can measure immediately
+qc.reset(1);
+qc.z(0);
+qc.measure(); // still 0
+
+// But Z between two H gates changes the outcome (interference)
+qc.reset(1);
+qc.had(0);
+qc.z(0);     // adds a -1 phase to the |1> part
+qc.had(0);
+qc.measure(); // compare with H;H without Z</code></pre>
+        <h3>Y — flip with phase</h3>
+        <pre><code>// Y behaves like X but with an extra phase (shows up in interference)
+qc.reset(1);
+qc.had(0);
+qc.y(0);
+qc.had(0);
+qc.measure();</code></pre>
+
+        <h2 id="cnot">3. CNOT and Control/Target</h2>
+        <p><code>qc.cnot(c,t)</code> flips target <code>t</code> only when control <code>c</code> is 1. It’s a quantum version of XOR and is the workhorse for entanglement.</p>
+        <pre><code>// CNOT truth-table taste
+qc.reset(2);
+// set control=1, target=0
+qc.x(0);       // make q0=1
+qc.cnot(0,1);  // if q0==1 then flip q1
+qc.measure();  // expect mostly 11</code></pre>
+
+        <h2 id="bell">4. Bell State (Entanglement)</h2>
+        <p>H on q0 creates a fair coin; CNOT(q0→q1) locks outcomes together. You should see only 00 and 11 in the histogram — never 01 or 10.</p>
+        <pre><code>// Bell state (|00>+|11>)/√2
+qc.reset(2);
+qc.had(0);
+qc.cnot(0,1);
+qc.measure();</code></pre>
+
+        <h2 id="phase">5. Phase and Interference (Z / Controlled‑Z)</h2>
+        <p><strong>Z</strong> changes the relative sign of amplitudes. You can’t see phase directly by measuring once, but you can see its effect through interference (e.g., H→Z→H). <strong>CZ</strong> adds a −1 phase only on <code>|11⟩</code> and is useful in algorithms and error‑correcting patterns.</p>
+        <pre><code>// H → Z → H vs H → H
+qc.reset(1); qc.had(0); qc.z(0); qc.had(0); qc.measure();
+// Compare with:
+// qc.reset(1); qc.had(0); qc.had(0); qc.measure();</code></pre>
+        <pre><code>// Controlled‑Z marks |11> with a phase
+qc.reset(2);
+qc.had(0); qc.had(1);
+qc.cz(0,1);     // adds −1 phase to |11>
+qc.had(0); qc.had(1);
+qc.measure();   // distribution shifts vs without CZ</code></pre>
+
+        <h2 id="measure">6. Measurement and Shots</h2>
+        <p><code>qc.measure()</code> samples a basis outcome and collapses the state. To estimate probabilities, run many shots (200–1000) and look at the histogram: taller bars mean more likely outcomes.</p>
+      </section>
+
+      <aside class="card">
+        <h2>Live Demos</h2>
+        <div class="toolbar">
+          <select id="examples">
+            <option value="reset2">Reset (2q)</option>
+            <option value="xgate">X on |0⟩</option>
+            <option value="zplain">Z no‑change (|0⟩)</option>
+            <option value="hzh">H‑Z‑H (interference)</option>
+            <option value="ygate">Y interference</option>
+            <option value="cnot">CNOT (XOR)</option>
+            <option value="bell">Bell state</option>
+            <option value="cz">CZ marking</option>
+          </select>
+          <button id="load">Load</button>
+          <label>Shots</label>
+          <input id="shots" type="number" min="1" max="100000" value="300" style="width:110px" />
+          <button id="run">Run shots</button>
+        </div>
+        <textarea id="code">// Pick an example and click Load
+// Then edit and click Run shots
+</textarea>
+        <h3>Histogram</h3>
+        <div id="hist" class="bars"></div>
+        <h3>Log</h3>
+        <pre id="out" style="min-height:120px"></pre>
+      </aside>
+    </div>
+  </div>
+  <script src="../qcengine.js"></script>
+  <script>
+    const EX={
+      reset2:`qc.reset(2);\nqc.measure();\n`,
+      xgate:`qc.reset(1);\nqc.x(0);\nqc.measure();\n`,
+      zplain:`qc.reset(1);\nqc.z(0);\nqc.measure();\n`,
+      hzh:`qc.reset(1);\nqc.had(0);\nqc.z(0);\nqc.had(0);\nqc.measure();\n`,
+      ygate:`qc.reset(1);\nqc.had(0);\nqc.y(0);\nqc.had(0);\nqc.measure();\n`,
+      cnot:`qc.reset(2);\nqc.x(0);\nqc.cnot(0,1);\nqc.measure();\n`,
+      bell:`qc.reset(2);\nqc.had(0);\nqc.cnot(0,1);\nqc.measure();\n`,
+      cz:`qc.reset(2);\nqc.had(0); qc.had(1);\nqc.cz(0,1);\nqc.had(0); qc.had(1);\nqc.measure();\n`,
+    };
+    const code=document.getElementById('code');
+    const out=document.getElementById('out');
+    const hist=document.getElementById('hist');
+    function render(counts,n){ const m=Math.max(1,...counts); hist.innerHTML=''; counts.forEach((c,i)=>{ const b=document.createElement('div'); b.className='bar'; b.style.height=`${(c/m)*100}%`; const L=document.createElement('div'); L.className='label'; L.textContent=i.toString(2).padStart(n,'0'); const V=document.createElement('div'); V.className='value'; V.textContent=String(c); b.appendChild(L); b.appendChild(V); hist.appendChild(b); }); }
+    document.getElementById('run').addEventListener('click',()=>{ const s=Math.max(1,Math.min(100000,parseInt(document.getElementById('shots').value,10)||300)); const {counts,nQubits,log}=window.QCEngineRunner.runProgram(code.value, s); render(counts,nQubits); out.textContent=log.join('\n'); });
+    document.getElementById('load').addEventListener('click',()=>{ const k=document.getElementById('examples').value; code.value=EX[k]||''; hist.innerHTML=''; out.textContent=''; });
+  </script>
+</body>
+</html>

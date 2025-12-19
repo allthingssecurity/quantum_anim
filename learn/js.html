@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Learn JavaScript — Code + Preview</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Learn JavaScript</h1>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="js.html">JavaScript</a>
+      <a href="math-simple.html">QC Math</a>
+      <a href="qc-basics.html">QC Basics</a>
+      <a href="qc-explain.html">Quantum Concepts</a>
+      <a href="learn-track.html">Guided Track</a>
+      <a href="../index.html">Playground</a>
+    </nav>
+  </header>
+  <div class="wrap">
+    <div class="layout">
+      <section class="card">
+        <h2>Overview</h2>
+        <p>This page gives you the JavaScript you need to tweak experiments confidently. Read on the left; try code on the right.</p>
+        <h3>1. Variables and numbers</h3>
+        <pre><code>let shots = 200;        // number of trials
+let name = 'qubit';     // string
+let ratio = 1/3;        // math
+console.log(name, shots, ratio.toFixed(2));</code></pre>
+        <h3>2. Arrays and loops</h3>
+        <pre><code>const basis = ['00','01','10','11'];
+for (let i=0; i<basis.length; i++) {
+  console.log(i, basis[i]);
+}</code></pre>
+        <h3>3. Conditionals</h3>
+        <pre><code>const p = Math.random();
+console.log(p < 0.3 ? 'low' : 'high');</code></pre>
+        <h3>4. Functions</h3>
+        <pre><code>function bias(theta){
+  return Math.sin(theta/2) ** 2; // probability of 1 for RY(theta)
+}
+console.log('p1=', bias(Math.PI/3).toFixed(2));</code></pre>
+        <h3>5. Objects and dot access</h3>
+        <pre><code>// Objects group related values and functions (methods)
+const qc = { shots: 200, had: (i)=>console.log('H on', i) };
+// Dot access
+console.log(qc.shots);   // 200
+qc.had(0);               // call a method
+// Bracket access (when you have a string key)
+const gate = 'had';
+qc[gate](1);             // same as qc.had(1)</code></pre>
+        <h3>6. Arrays of things + helpers</h3>
+        <pre><code>const qubits = [0,1,2];
+qubits.forEach(i => console.log('H on', i));
+function applyAll(indices, fn){ indices.forEach(fn); }
+applyAll([0,1], i => console.log('X on', i));</code></pre>
+        <h3>7. Destructuring, spread, defaults</h3>
+        <pre><code>const cfg = { shots: 500, target: 0 };
+const { shots = 200, target } = cfg;     // defaults + pick fields
+const gates = ['H','X'];
+const more = [...gates, 'CNOT'];         // spread arrays
+function deg(d=90){ return d*Math.PI/180; }
+console.log(shots, target, more, deg());</code></pre>
+        <h3>8. Template strings</h3>
+        <pre><code>const q=1, p=0.42;
+console.log(`Measure q${q}: p(1)≈${p}`);</code></pre>
+        <h3>9. What this enables in QCEngine</h3>
+        <pre><code>// Loop over qubits, call methods via dot access
+const qs = [0,1];
+qs.forEach(i => { qc.had(i); });
+// Parameter helpers (degrees→radians)
+function rad(d){ return d*Math.PI/180; }
+// Conditional circuits
+if (Math.random()<0.1) { /* add a noise gate */ }</code></pre>
+        <h3>Tips</h3>
+        <ul>
+          <li>Use <code>console.log(...)</code> to inspect values.</li>
+          <li>Keep examples short; change one thing and rerun.</li>
+          <li>Once comfortable, jump to QCEngine Basics.</li>
+        </ul>
+      </section>
+      <aside class="card">
+        <h2>Editor</h2>
+        <div class="toolbar">
+          <select id="examples">
+            <option value="v1">Variables</option>
+            <option value="a1">Arrays + loops</option>
+            <option value="c1">Conditionals</option>
+            <option value="f1">Functions</option>
+            <option value="o1">Objects + dot/bracket</option>
+            <option value="arr2">forEach/map helpers</option>
+            <option value="d1">Destructuring + spread + defaults</option>
+            <option value="t1">Template strings</option>
+            <option value="qcprep">QC prep: loop over qubits</option>
+          </select>
+          <button id="load">Load</button>
+          <button id="run">Run</button>
+          <button id="clear">Clear</button>
+        </div>
+        <textarea id="code">// Try JavaScript here
+let shots = 200;
+console.log('shots=', shots);
+</textarea>
+        <h3>Console Output</h3>
+        <pre id="out" style="min-height:160px"></pre>
+      </aside>
+    </div>
+  </div>
+  <script>
+    const EX={
+      v1:`let shots = 200;\nlet name = 'qubit';\nlet ratio = 1/3;\nconsole.log(name, shots, ratio.toFixed(2));\n`,
+      a1:`const basis = ['00','01','10','11'];\nfor (let i=0;i<basis.length;i++){ console.log(i, basis[i]); }\n`,
+      c1:`const p = Math.random();\nconsole.log(p < 0.3 ? 'low' : 'high');\n`,
+      f1:`function bias(theta){ return Math.sin(theta/2)**2; }\nconsole.log('p1=', bias(Math.PI/3).toFixed(2));\n`,
+      o1:`const qc = { shots: 200, had: (i)=>console.log('H on', i) };\nconsole.log(qc.shots);\nqc.had(0);\nconst gate='had'; qc[gate](1);\n`,
+      arr2:`const qubits=[0,1,2];\nqubits.forEach(i=>console.log('X on', i));\nfunction applyAll(idxs, fn){ idxs.forEach(fn); }\napplyAll([0,1], i=>console.log('H on', i));\n`,
+      d1:`const cfg={shots:500,target:0};\nconst {shots=200,target}=cfg;\nconst gates=['H','X'];\nconst more=[...gates,'CNOT'];\nfunction deg(d=90){return d*Math.PI/180;}\nconsole.log(shots,target,more,deg());\n`,
+      t1:'const q=1,p=0.42;\nconsole.log(`Measure q${q}: p(1)≈${p}`);\n',
+      qcprep:`const qc={ had:(i)=>console.log('H on',i) };\n[0,1].forEach(i=>qc.had(i));\n`,
+    };
+    const code=document.getElementById('code');
+    const out=document.getElementById('out');
+    document.getElementById('load').addEventListener('click',()=>{ code.value = EX[document.getElementById('examples').value]||''; out.textContent=''; });
+    document.getElementById('run').addEventListener('click',()=>{
+      const logs=[]; const logger=(...a)=>logs.push(a.map(String).join(' '));
+      try { new Function('console', code.value)( {log:logger} ); out.textContent = logs.join('\n'); }
+      catch(e){ out.textContent = 'Error: '+e.message; }
+    });
+    document.getElementById('clear').addEventListener('click',()=> out.textContent='');
+  </script>
+</body>
+</html>

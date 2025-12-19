@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quantum Concepts — Intuition + Code</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Quantum Concepts</h1>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="js.html">JavaScript</a>
+      <a href="math-simple.html">QC Math</a>
+      <a href="qc-basics.html">QC Basics</a>
+      <a href="qc-explain.html">Quantum Concepts</a>
+      <a href="learn-track.html">Guided Track</a>
+      <a href="../index.html">Playground</a>
+    </nav>
+  </header>
+  <div class="wrap">
+    <div class="layout">
+      <section class="card">
+        <h2>Intuition First</h2>
+        <p>Start with three lenses and small runnable examples.</p>
+        <h3>1) Superposition ~ “fair coin” until measured</h3>
+        <pre><code>// One fair coin
+qc.reset(1);
+qc.had(0);
+qc.measure();</code></pre>
+        <h3>2) Entanglement ~ “move together”</h3>
+        <pre><code>// Lock outcomes together (00 or 11)
+qc.reset(2);
+qc.had(0);
+qc.cnot(0,1);
+qc.measure();</code></pre>
+        <h3>3) Interference ~ “small middle change, big final effect”</h3>
+        <pre><code>// H → phase → H
+qc.reset(1);
+qc.had(0);
+qc.rz(0, Math.PI/3);
+qc.had(0);
+qc.measure();</code></pre>
+        <h3>Grover taste (2‑qubit toy)</h3>
+        <pre><code>qc.reset(2);
+qc.had(0); qc.had(1);
+qc.phase_flip('11'); // mark answer
+// diffuse
+qc.had(0); qc.had(1);
+qc.phase_flip('00');
+qc.had(0); qc.had(1);
+qc.measure();</code></pre>
+        <p class="note">Run each example on the right with shots 200–1000 to see stable histograms.</p>
+      </section>
+      <aside class="card">
+        <h2>Editor</h2>
+        <div class="toolbar">
+          <select id="examples">
+            <option value="sup">Superposition</option>
+            <option value="ent">Entanglement</option>
+            <option value="intf">Interference</option>
+            <option value="grover">Grover taste</option>
+          </select>
+          <button id="load">Load</button>
+          <label>Shots</label>
+          <input id="shots" type="number" min="1" max="100000" value="300" style="width:110px" />
+          <button id="run">Run shots</button>
+        </div>
+        <textarea id="code">// Superposition
+qc.reset(1); qc.had(0); qc.measure();
+</textarea>
+        <h3>Histogram</h3>
+        <div id="hist" class="bars"></div>
+        <h3>Log</h3>
+        <pre id="out" style="min-height:120px"></pre>
+      </aside>
+    </div>
+  </div>
+  <script src="../qcengine.js"></script>
+  <script>
+    const EX={
+      sup:`qc.reset(1);\nqc.had(0);\nqc.measure();\n`,
+      ent:`qc.reset(2);\nqc.had(0);\nqc.cnot(0,1);\nqc.measure();\n`,
+      intf:`qc.reset(1);\nqc.had(0);\nqc.rz(0, Math.PI/3);\nqc.had(0);\nqc.measure();\n`,
+      grover:`qc.reset(2);\nqc.had(0); qc.had(1);\nqc.phase_flip('11');\nqc.had(0); qc.had(1);\nqc.phase_flip('00');\nqc.had(0); qc.had(1);\nqc.measure();\n`
+    };
+    const code=document.getElementById('code');
+    const out=document.getElementById('out');
+    const hist=document.getElementById('hist');
+    function render(counts,n){ const m=Math.max(1,...counts); hist.innerHTML=''; counts.forEach((c,i)=>{ const b=document.createElement('div'); b.className='bar'; b.style.height=`${(c/m)*100}%`; const L=document.createElement('div'); L.className='label'; L.textContent=i.toString(2).padStart(n,'0'); const V=document.createElement('div'); V.className='value'; V.textContent=String(c); b.appendChild(L); b.appendChild(V); hist.appendChild(b); }); }
+    document.getElementById('run').addEventListener('click',()=>{ const s=Math.max(1,Math.min(100000,parseInt(document.getElementById('shots').value,10)||300)); const {counts,nQubits,log}=window.QCEngineRunner.runProgram(code.value, s); render(counts,nQubits); out.textContent=log.join('\n'); });
+    document.getElementById('load').addEventListener('click',()=>{ const k=document.getElementById('examples').value; code.value=EX[k]||''; hist.innerHTML=''; out.textContent=''; });
+  </script>
+</body>
+</html>

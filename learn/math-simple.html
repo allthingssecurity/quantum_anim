@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Math — Simple, Step‑by‑Step</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Math — Simple, Step‑by‑Step</h1>
+    <nav class="nav">
+      <a href="js.html">JavaScript</a>
+      <a href="qc-basics.html">QCEngine Basics</a>
+      <a href="learn-track.html">Guided Track</a>
+      <a href="math-simple.html">Math (Simple)</a>
+      <a href="../index.html">Playground</a>
+    </nav>
+  </header>
+  <div class="wrap">
+    <div class="layout">
+      <section class="card" id="explain">
+        <h2 id="title">Hadamard on |0⟩</h2>
+        <p id="desc">Creates a fair coin from |0⟩.</p>
+        <h3>Gate matrix U</h3>
+        <pre id="mat"></pre>
+        <h3>Input state |ψ⟩</h3>
+        <pre id="vecIn"></pre>
+        <h3>Multiply U · |ψ⟩ (row by row)</h3>
+        <pre id="steps"></pre>
+        <h3>Output state |ψ'⟩</h3>
+        <pre id="vecOut"></pre>
+        <p class="note" id="note"></p>
+      </section>
+      <aside class="card">
+        <h2>Run the example</h2>
+        <div class="toolbar">
+          <select id="example">
+            <option value="h0">Hadamard on |0⟩</option>
+            <option value="x0">Pauli‑X on |0⟩</option>
+            <option value="zplus">Pauli‑Z on |+⟩</option>
+            <option value="hh0">H then H on |0⟩</option>
+            <option value="bell">Bell from H + CNOT</option>
+          </select>
+          <button id="load">Load</button>
+        </div>
+        <div class="toolbar">
+          <label>Shots</label>
+          <input id="shots" type="number" min="1" max="100000" value="300" style="width:110px" />
+          <button id="run">Run shots</button>
+        </div>
+        <h3>QC code</h3>
+        <pre id="code"></pre>
+        <h3>Histogram</h3>
+        <div id="hist" class="bars"></div>
+      </aside>
+    </div>
+  </div>
+  <script src="../qcengine.js"></script>
+  <script>
+    const SQ = 1/Math.sqrt(2);
+    const fmt = x=> (Math.abs(x)<1e-12? 0 : x).toFixed(4);
+    function matStr(M){ return M.map(r=>r.map(fmt).join('  ')).join('\n'); }
+    function vecStr(v){ return v.map(r=>fmt(r[0])).join('\n'); }
+    function mulSteps(U,v){
+      const lines=[]; const out=[[0],[0]];
+      for(let i=0;i<U.length;i++){
+        const terms = U[i].map((a,k)=>({a, b:v[k][0], p: a*v[k][0]}));
+        const sum = terms.reduce((s,t)=>s+t.p,0);
+        out[i][0]=sum;
+        lines.push(`Row ${i}: `+ terms.map(t=>`(${fmt(t.a)})×(${fmt(t.b)})=${fmt(t.p)}`).join('  +  ')+`  →  ${fmt(sum)}`);
+      }
+      return {lines, out};
+    }
+    const EX = {
+      h0: {
+        title:'Hadamard on |0⟩', desc:'Creates a fair coin from |0⟩.',
+        U:[[SQ,SQ],[SQ,-SQ]], v:[[1],[0]],
+        note:'Output ≈ [0.7071; 0.7071] = |+⟩. Probabilities 50/50.',
+        code:`qc.reset(1);\nqc.had(0);\nqc.measure();`
+      },
+      x0: {
+        title:'Pauli‑X on |0⟩', desc:'Flips 0↔1.',
+        U:[[0,1],[1,0]], v:[[1],[0]],
+        note:'Output = [0;1] = |1⟩.',
+        code:`qc.reset(1);\nqc.x(0);\nqc.measure();`
+      },
+      zplus: {
+        title:'Pauli‑Z on |+⟩', desc:'Changes phase of |1⟩; probabilities unchanged.',
+        U:[[1,0],[0,-1]], v:[[SQ],[SQ]],
+        note:'Output = [0.7071; −0.7071] = |−⟩. Same probabilities, different relative sign (phase).',
+        code:`qc.reset(1);\nqc.had(0); // |+>\nqc.z(0);\nqc.measure();`
+      },
+      hh0: {
+        title:'H then H on |0⟩', desc:'H·H = I (returns to |0⟩).',
+        // We show the combined matrix = I for clarity
+        U:[[1,0],[0,1]], v:[[1],[0]],
+        note:'Output = |0⟩. Two Hadamards cancel.',
+        code:`qc.reset(1);\nqc.had(0);\nqc.had(0);\nqc.measure();`
+      },
+      bell: {
+        title:'Bell from H + CNOT', desc:'Lock outcomes together (00 or 11).',
+        // Show math for (I ⊗ H)|00> then CNOT
+        U4:[[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]], // CNOT (q0→q1) in our basis
+        v4:[ [SQ],[0],[SQ],[0] ], // (I⊗H)|00> = 1/sqrt(2)[1,0,1,0]^T
+        note:'Output = 1/√2 [1,0,0,1]^T = (|00⟩+|11⟩)/√2.',
+        code:`qc.reset(2);\nqc.had(0);\nqc.cnot(0,1);\nqc.measure();`
+      }
+    };
+    function load(key){
+      const e=EX[key];
+      document.getElementById('title').textContent = e.title;
+      document.getElementById('desc').textContent = e.desc;
+      let Utxt, Vin, stepsTxt, Vout;
+      if (e.U){
+        const {lines,out} = mulSteps(e.U, e.v);
+        Utxt = matStr(e.U); Vin = vecStr(e.v); stepsTxt = lines.join('\n'); Vout = vecStr(out);
+      } else { // 2‑qubit example
+        // Manually show CNOT · ((I⊗H)|00>) steps compactly
+        const U=e.U4, v=e.v4;
+        const out = [ [U[0][0]*v[0][0] + U[0][1]*v[1][0] + U[0][2]*v[2][0] + U[0][3]*v[3][0]] ,
+                      [U[1][0]*v[0][0] + U[1][1]*v[1][0] + U[1][2]*v[2][0] + U[1][3]*v[3][0]] ,
+                      [U[2][0]*v[0][0] + U[2][1]*v[1][0] + U[2][2]*v[2][0] + U[2][3]*v[3][0]] ,
+                      [U[3][0]*v[0][0] + U[3][1]*v[1][0] + U[3][2]*v[2][0] + U[3][3]*v[3][0]] ];
+        Utxt = matStr(U);
+        Vin = v.map(r=>fmt(r[0])).join('\n');
+        const lines = [];
+        for (let i=0;i<4;i++){
+          const parts=[]; for(let k=0;k<4;k++){ parts.push(`(${fmt(U[i][k])})×(${fmt(v[k][0])})=${fmt(U[i][k]*v[k][0])}`); }
+          lines.push(`Row ${i}: `+parts.join('  +  ')+`  →  ${fmt(out[i][0])}`);
+        }
+        stepsTxt = lines.join('\n'); Vout = out.map(r=>fmt(r[0])).join('\n');
+      }
+      document.getElementById('mat').textContent = Utxt;
+      document.getElementById('vecIn').textContent = Vin;
+      document.getElementById('steps').textContent = stepsTxt;
+      document.getElementById('vecOut').textContent = Vout;
+      document.getElementById('note').textContent = e.note || '';
+      document.getElementById('code').textContent = e.code;
+      document.getElementById('hist').innerHTML='';
+      document.getElementById('example').value = key;
+    }
+    function render(counts,n){ const m=Math.max(1,...counts); const hist=document.getElementById('hist'); hist.innerHTML=''; counts.forEach((c,i)=>{ const b=document.createElement('div'); b.className='bar'; b.style.height=`${(c/m)*100}%`; const L=document.createElement('div'); L.className='label'; L.textContent=i.toString(2).padStart(n,'0'); const V=document.createElement('div'); V.className='value'; V.textContent=String(c); b.appendChild(L); b.appendChild(V); hist.appendChild(b); }); }
+    document.getElementById('run').addEventListener('click',()=>{ const s=Math.max(1,Math.min(100000,parseInt(document.getElementById('shots').value,10)||300)); const src=document.getElementById('code').textContent; const {counts,nQubits}=window.QCEngineRunner.runProgram(src, s); render(counts,nQubits); });
+    document.getElementById('load').addEventListener('click',()=> load(document.getElementById('example').value));
+    // default
+    load('h0');
+  </script>
+</body>
+</html>
+
