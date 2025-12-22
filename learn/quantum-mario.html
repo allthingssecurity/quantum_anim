@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quantum Mario — Learn by Playing</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <style>
+    .grid{display:grid;grid-template-columns:1.3fr 0.7fr;gap:18px}
+    #qm-canvas{width:100%;height:420px;background:#0f1620;border:1px solid var(--border);border-radius:12px}
+    pre{min-height:120px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Quantum Mario — Learn by Playing</h1>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="js.html">JavaScript</a>
+      <a href="math-simple.html">QC Math</a>
+      <a href="qc-basics.html">QC Basics</a>
+      <a href="qc-explain.html">Quantum Concepts</a>
+      <a href="learn-track.html">Guided Track</a>
+      <a href="../playground/index.html">Playground</a>
+    </nav>
+  </header>
+  <div class="wrap">
+    <div class="grid">
+      <section class="card">
+        <div class="toolbar" style="justify-content:space-between;align-items:center">
+          <h2 id="qm-level" style="margin:0">Level 1: 1‑Qubit Basics</h2>
+          <div id="qm-level-ui" style="display:none">
+            <label>Level</label>
+            <select id="qm-level-select" style="min-width:200px"></select>
+            <button id="qm-start">Start</button>
+            <button id="qm-next">Next</button>
+          </div>
+        </div>
+        <canvas id="qm-canvas" width="800" height="400"></canvas>
+        <p class="note">Controls: ← → to move, Space/↑ to jump. Collect H/X/CNOT coins to build a circuit. Then run shots.</p>
+      </section>
+      <aside class="card">
+        <h2>Quantum Panel</h2>
+        <div class="toolbar">
+          <label>Shots</label>
+          <input id="qm-shots" type="number" min="1" max="100000" value="300" style="width:120px" />
+          <button id="qm-run">Run shots</button>
+          <button id="qm-reset">Reset level</button>
+          <button id="qm-new">New game</button>
+          <button id="qm-save">Save</button>
+          <button id="qm-load">Load</button>
+        </div>
+        <h3>Program</h3>
+        <pre id="qm-code"></pre>
+        <h3>Histogram</h3>
+        <div id="qm-hist" class="bars"></div>
+        <p class="note">Tip: Your circuit uses qc.reset(2) + collected gates; we measure at the end to show probabilities.</p>
+      </aside>
+    </div>
+  </div>
+  <script src="../qcengine.js"></script>
+  <script src="assets/quantum-mario.js"></script>
+</body>
+</html>
