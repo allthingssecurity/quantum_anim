@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Quantum AR: Gesture Training</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #05070f;
+        --accent: #22d3ee;
+        --accent2: #f43f5e;
+        --text: #e5e7eb;
+      }
+      html, body {
+        margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden;
+        font-family: "Space Grotesk", system-ui, sans-serif;
+      }
+      #app { position: fixed; inset: 0; }
+      #cameraFeed {
+        position: fixed; inset: 0; object-fit: cover; z-index: 1; opacity: 0.8;
+        transform: scaleX(-1);
+      }
+      #landmarks {
+        position: fixed; inset: 0; z-index: 2; pointer-events: none;
+      }
+      #overlay {
+        position: fixed; inset: 0; display: grid; place-items: center;
+        background: radial-gradient(circle at top, rgba(34,211,238,0.2), transparent 60%), #05070f;
+        z-index: 10; text-align: center;
+      }
+      #overlay .card {
+        background: rgba(7,10,18,0.9); border: 1px solid rgba(34,211,238,0.4);
+        padding: 24px 28px; border-radius: 20px; box-shadow: 0 0 40px rgba(34,211,238,0.2);
+        max-width: 420px;
+      }
+      #overlay h1 { margin: 0 0 10px; font-size: 24px; letter-spacing: 0.04em; }
+      #overlay p { margin: 6px 0; opacity: 0.85; font-size: 14px; }
+      #progress {
+        margin-top: 12px; height: 8px; background: rgba(255,255,255,0.1);
+        border-radius: 999px; overflow: hidden;
+      }
+      #bar {
+        height: 100%; width: 0%;
+        background: linear-gradient(90deg, #22d3ee, #38bdf8);
+        transition: width 0.4s ease;
+      }
+      #statusLine, #percentLine, #debugLine {
+        margin-top: 8px; font-size: 12px; opacity: 0.8;
+      }
+      #cameraHint {
+        margin-top: 10px; font-size: 12px; opacity: 0.7;
+      }
+      #retryBtn {
+        margin-top: 12px; background: #22d3ee; color: #0b1120; border: none;
+        padding: 8px 14px; border-radius: 10px; font-weight: 600; cursor: pointer;
+      }
+      #preview {
+        margin-top: 12px; width: 120px; height: 90px; border-radius: 8px;
+        border: 1px solid rgba(34,211,238,0.4); object-fit: cover;
+      }
+      #hud {
+        position: fixed; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between;
+        pointer-events: none; z-index: 5;
+      }
+      #hud .box {
+        background: rgba(2,6,23,0.7); border: 1px solid rgba(34,211,238,0.3);
+        padding: 8px 12px; border-radius: 12px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase;
+      }
+      #levelBox { margin-left: 8px; }
+      #centerText {
+        position: fixed; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+        text-align: center; font-size: 20px; letter-spacing: 0.3em; opacity: 0.6; pointer-events: none;
+      }
+      #hitText {
+        position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%);
+        font-size: 26px; font-weight: 700; letter-spacing: 0.2em; opacity: 0; transition: opacity 0.2s ease;
+        pointer-events: none;
+      }
+      #hitText.hit { color: #22d3ee; opacity: 1; }
+      #hitText.miss { color: #f43f5e; opacity: 1; }
+      #help {
+        position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+        background: rgba(2,6,23,0.7); border: 1px solid rgba(34,211,238,0.3);
+        padding: 10px 14px; border-radius: 12px; font-size: 12px; letter-spacing: 0.12em;
+        text-transform: uppercase; z-index: 6; pointer-events: none;
+      }
+      #guide {
+        position: fixed; left: 16px; bottom: 80px; width: 260px; z-index: 7;
+        background: rgba(2,6,23,0.9); border: 1px solid rgba(34,211,238,0.4);
+        border-radius: 16px; padding: 12px 14px; box-shadow: 0 0 20px rgba(34,211,238,0.2);
+        font-size: 12px;
+      }
+      #guide h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: #22d3ee; }
+      #guide p { margin: 4px 0; opacity: 0.85; }
+      #learnCard {
+        position: fixed; right: 16px; top: 80px; width: 320px; z-index: 7;
+        background: rgba(2,6,23,0.9); border: 1px solid rgba(34,211,238,0.4);
+        border-radius: 16px; padding: 14px 16px; box-shadow: 0 0 30px rgba(34,211,238,0.2);
+        opacity: 0; transform: translateY(10px); transition: all 0.3s ease;
+        pointer-events: none;
+      }
+      #learnCard.show { opacity: 1; transform: translateY(0); }
+      #learnTitle { font-size: 14px; letter-spacing: 0.2em; text-transform: uppercase; color: #22d3ee; }
+      #learnBody { margin-top: 6px; font-size: 13px; line-height: 1.4; color: #e5e7eb; }
+      #learnTakeaway { margin-top: 8px; font-size: 12px; color: #cbd5f5; }
+      #learnCompare { margin-top: 10px; font-size: 12px; display: grid; gap: 6px; }
+      #learnCompare div { background: rgba(15,23,42,0.8); padding: 6px 8px; border-radius: 8px; }
+      #levelModal {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: rgba(0,0,0,0.7); z-index: 8; opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+      }
+      #levelModal.show { opacity: 1; pointer-events: auto; }
+      #levelCard {
+        background: rgba(2,6,23,0.95); border: 1px solid rgba(34,211,238,0.4);
+        border-radius: 18px; padding: 18px 20px; width: 360px; text-align: center;
+        box-shadow: 0 0 40px rgba(34,211,238,0.2);
+      }
+      #levelCard h2 { margin: 0 0 8px; font-size: 18px; letter-spacing: 0.2em; text-transform: uppercase; color: #22d3ee; }
+      #levelCard p { margin: 6px 0; font-size: 13px; opacity: 0.85; }
+      #nextBtn {
+        margin-top: 10px; background: #22d3ee; color: #0b1120; border: none;
+        padding: 8px 14px; border-radius: 10px; font-weight: 600; cursor: pointer;
+      }
+      #quizOptions { margin-top: 12px; display: grid; gap: 8px; }
+      .quizBtn {
+        background: rgba(34,211,238,0.15); color: #e5e7eb; border: 1px solid rgba(34,211,238,0.4);
+        padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 12px;
+      }
+      .quizBtn.correct { background: rgba(34,197,94,0.2); border-color: rgba(34,197,94,0.6); }
+      .quizBtn.wrong { background: rgba(244,63,94,0.2); border-color: rgba(244,63,94,0.6); }
+      #preview { display: none; }
+    </style>
+  </head>
+  <body>
+    <video id="cameraFeed" autoplay playsinline muted></video>
+    <video id="video" autoplay playsinline muted style="display:none"></video>
+    <canvas id="landmarks"></canvas>
+    <div id="app"></div>
+    <div id="overlay">
+      <div class="card">
+        <h1>Quantum AR: Gesture Training</h1>
+        <p id="statusText">Loading models. Please wait.</p>
+        <div id="progress"><div id="bar"></div></div>
+        <div id="percentLine">0%</div>
+        <div id="statusLine">Step 1/3: Fetching AI model files</div>
+        <div id="debugLine"></div>
+        <p>Use the "pistol" gesture: index finger out, thumb pinched to shoot.</p>
+        <p>Move your hand in view of the camera.</p>
+        <div id="cameraHint">Tip: Allow camera access when prompted.</div>
+        <button id="retryBtn">Retry</button>
+        <video id="preview" autoplay playsinline muted></video>
+      </div>
+    </div>
+    <div id="hud">
+      <div style="display:flex; gap:8px;">
+        <div class="box" id="score">Score: 0</div>
+        <div class="box" id="levelBox">Level 1/6</div>
+      </div>
+      <div class="box" id="streak">Streak: x1</div>
+    </div>
+    <div id="centerText">ALIGN • LEARN • ACT</div>
+    <div id="hitText">HIT</div>
+    <div id="help">Point your finger at a target to trigger a palm blast.</div>
+      <div id="guide">
+      <h3>Gesture Guide</h3>
+      <p>Show your palm to the camera.</p>
+      <p>Raise ONLY your index finger.</p>
+      <p>Hover over a target to collect it.</p>
+    </div>
+    <div id="learnCard">
+      <div id="learnTitle">Concept</div>
+      <div id="learnBody">Hit a disc to reveal the concept.</div>
+      <div id="learnTakeaway"></div>
+      <div id="learnCompare">
+        <div id="learnOld"></div>
+        <div id="learnNew"></div>
+      </div>
+    </div>
+    <div id="levelModal">
+      <div id="levelCard">
+        <h2 id="levelTitle">Level Complete</h2>
+        <p id="levelText">Get ready for the next chapter.</p>
+        <div id="quizOptions"></div>
+        <button id="nextBtn">Next Chapter</button>
+      </div>
+    </div>
+
+    <video id="video" autoplay playsinline muted></video>
+
+    <script src="vendor/three.min.js"></script>
+    <script src="vendor/hands.js"></script>
+    <script src="vendor/camera_utils.js"></script>
+    <script>
+      window.QUANTUM_BLURBS = {
+        "Qubit": "Qubits are like tiny arrows; |0⟩ is north, |1⟩ is south.",
+        "Hadamard": "Creates a fair quantum coin: |0⟩ → (|0⟩+|1⟩)/√2.",
+        "Phase": "Z/RZ change phase; visible via interference with H.",
+        "CNOT": "Flips target only when control is 1 — entanglement core.",
+        "Bell": "H on q0 + CNOT 0→1 → (|00⟩+|11⟩)/√2; only 00 or 11.",
+        "Grover": "Oracle marks target by phase; diffusion amplifies it.",
+        "TSP": "Score routes via phase; amplify the best one."
+      };
+    </script>
+
+    <script>
+      const overlay = document.getElementById('overlay');
+      const statusText = document.getElementById('statusText');
+      const statusLine = document.getElementById('statusLine');
+      const percentLine = document.getElementById('percentLine');
+      const bar = document.getElementById('bar');
+      const debugLine = document.getElementById('debugLine');
+      const retryBtn = document.getElementById('retryBtn');
+      const preview = document.getElementById('preview');
+      const cameraFeed = document.getElementById('cameraFeed');
+      const landmarksCanvas = document.getElementById('landmarks');
+      const landmarksCtx = landmarksCanvas.getContext('2d');
+      const scoreEl = document.getElementById('score');
+      const streakEl = document.getElementById('streak');
+      const hitText = document.getElementById('hitText');
+      const centerText = document.getElementById('centerText');
+      const levelModal = document.getElementById('levelModal');
+      const levelTitle = document.getElementById('levelTitle');
+      const levelText = document.getElementById('levelText');
+      const nextBtn = document.getElementById('nextBtn');
+      const learnCard = document.getElementById('learnCard');
+      const learnTitle = document.getElementById('learnTitle');
+      const learnBody = document.getElementById('learnBody');
+      const learnTakeaway = document.getElementById('learnTakeaway');
+      const learnOld = document.getElementById('learnOld');
+      const learnNew = document.getElementById('learnNew');
+      const quizOptions = document.getElementById('quizOptions');
+
+      if (!window.THREE || !window.Hands || !window.Camera) {
+        statusText.textContent = "Failed to load AR libraries.";
+        statusLine.textContent = "Local assets missing. Please reload.";
+        debugLine.textContent = "Check /public/vendor files for MediaPipe + Three.js.";
+        retryBtn.addEventListener('click', () => location.reload());
+      } else {
+
+      const levels = [
+        {
+          name: "Qubits",
+          concepts: ["Qubit", "Basis |0⟩", "Basis |1⟩", "Bloch", "Measurement", "Probability", "Amplitude", "Phase", "Bit Order", "State Vector"],
+          target: 10,
+          speed: 0.006,
+          quiz: [
+            { q: "A fresh qubit starts in which state?", correct: "Basis |0⟩", options: ["Basis |0⟩", "Basis |1⟩", "|+⟩"] },
+            { q: "Probabilities are squares of what?", correct: "Amplitude", options: ["Amplitude", "Phase", "Velocity"] },
+            { q: "On the Bloch sphere, |0⟩ is at the?", correct: "Bloch", options: ["North pole", "Equator", "South pole"] }
+          ]
+        },
+        {
+          name: "Superposition",
+          concepts: ["Hadamard", "|+⟩", "|−⟩", "Phase", "RZ", "Interference", "Global Phase", "RX vs RY", "Coin Toss", "H·H = I"],
+          target: 10,
+          speed: 0.007,
+          quiz: [
+            { q: "H on |0⟩ gives?", correct: "|+⟩", options: ["|+⟩", "|1⟩", "|−⟩"] },
+            { q: "Z changes?", correct: "Phase", options: ["Phase", "Probability", "Index"] },
+            { q: "Interference shows up after combining?", correct: "H and phase", options: ["H and phase", "Two X gates", "Swap"] }
+          ]
+        },
+        {
+          name: "Entanglement",
+          concepts: ["CNOT", "Bell Φ+", "Bell Ψ+", "Correlation", "Control/Target", "Swap", "CZ", "CP", "Partial Entangle", "GHZ"],
+          target: 10,
+          speed: 0.008,
+          quiz: [
+            { q: "H on q0 + CNOT 0→1 makes?", correct: "Bell Φ+", options: ["Bell Φ+", "GHZ", "|+⟩"] },
+            { q: "CNOT flips target when?", correct: "Control=1", options: ["Control=1", "Always", "Never"] },
+            { q: "GHZ involves how many qubits here?", correct: "3", options: ["3", "2", "1"] }
+          ]
+        },
+        {
+          name: "Algorithms",
+          concepts: ["Grover", "Oracle", "Diffusion", "Amplitude Amp", "QFT", "Shor (idea)", "Periodicity", "TSP (toy)", "Noise", "Error Mitigation"],
+          target: 10,
+          speed: 0.009,
+          quiz: [
+            { q: "Grover’s diffuser does what?", correct: "Invert about mean", options: ["Invert about mean", "Swap qubits", "Reset state"] },
+            { q: "Shor’s algorithm finds?", correct: "Period", options: ["Period", "Shortest path", "Parity"] },
+            { q: "TSP toy uses phases to?", correct: "Score routes", options: ["Score routes", "Sort routes", "Count routes"] }
+          ]
+        }
+      ];
+
+      let score = 0;
+      let streak = 1;
+      let lastShotTime = 0;
+      let lastDetectionTime = 0;
+      let pinchActive = false;
+      let levelIndex = 0;
+      let levelHits = 0;
+      let currentConceptIndex = 0;
+      let waitingForNext = false;
+      let hoverTargetId = null;
+      let hoverStart = 0;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+      camera.position.z = 6;
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(innerWidth, innerHeight);
+      document.getElementById('app').appendChild(renderer.domElement);
+
+      const light = new THREE.DirectionalLight(0xffffff, 1.2);
+      light.position.set(5, 5, 10);
+      scene.add(light);
+
+      const ambient = new THREE.AmbientLight(0x88aaff, 0.6);
+      scene.add(ambient);
+
+      const crosshair = new THREE.Mesh(
+        new THREE.RingGeometry(0.18, 0.24, 32),
+        new THREE.MeshBasicMaterial({ color: 0x22d3ee })
+      );
+      scene.add(crosshair);
+
+      const laser = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -3)
+        ]),
+        new THREE.LineBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.6 })
+      );
+      scene.add(laser);
+
+      const discs = [];
+      const particles = [];
+      const discGeo = new THREE.PlaneGeometry(0.9, 0.9);
+      let activeTargets = 0;
+
+      const conceptBlurbs = {
+        "Qubit": "A quantum bit: |ψ⟩ = α|0⟩ + β|1⟩ with |α|²+|β|²=1.",
+        "Basis |0⟩": "Computational basis state |0⟩. Measuring returns 0 with probability 1.",
+        "Basis |1⟩": "Computational basis state |1⟩. Measuring returns 1 with probability 1.",
+        "Bloch": "Single‑qubit pure states live on the Bloch sphere (|0⟩ north, |1⟩ south).",
+        "Measurement": "Sampling collapses the state to a basis vector; outcomes follow the amplitudes squared.",
+        "Probability": "Outcome probabilities are |amplitude|². “Shots” approximate them experimentally.",
+        "Amplitude": "Complex numbers α,β determine probabilities and phases; phases drive interference.",
+        "Phase": "Relative phase changes interference but not direct measurement on its own.",
+        "Bit Order": "Our bit order is q0 least‑significant, then q1, etc. |q1 q0⟩ indexing.",
+        "State Vector": "For n qubits we track 2^n complex amplitudes — the full quantum state.",
+        "Hadamard": "H maps |0⟩→(|0⟩+|1⟩)/√2, |1⟩→(|0⟩−|1⟩)/√2. Creates a fair superposition.",
+        "|+⟩": "|+⟩ = (|0⟩+|1⟩)/√2. Measuring gives 0/1 ~50/50.",
+        "|−⟩": "|−⟩ = (|0⟩−|1⟩)/√2. Phase differs from |+⟩.",
+        "RZ": "Rotation around Z: changes phase only; probabilities unchanged until interfered.",
+        "Interference": "Combining paths (e.g., H → phase → H) can amplify or cancel probabilities.",
+        "Global Phase": "Overall e^{iφ} has no observable effect; only relative phase matters.",
+        "RX vs RY": "Rotations around X/Y axes tilt the Bloch vector differently (probabilities vs phase mix).",
+        "Coin Toss": "H on |0⟩ behaves like a fair coin when measured.",
+        "H·H = I": "Applying H twice returns the state to where it started.",
+        "CNOT": "If control=1 then flip target. Spreads correlation — key to entanglement.",
+        "Bell Φ+": "(|00⟩+|11⟩)/√2 — only 00 and 11 appear, perfectly correlated.",
+        "Bell Ψ+": "(|01⟩+|10⟩)/√2 — anti‑correlated.",
+        "Correlation": "Outcomes move together beyond classical mixtures — a hallmark of entanglement.",
+        "Control/Target": "CNOT(c,t): order matters — choose which qubit controls and which flips.",
+        "Swap": "Exchange two qubits’ states. Useful for routing entanglement.",
+        "CZ": "Controlled‑Z adds a −1 phase on |11⟩. Changes interference, not raw probability.",
+        "CP": "Controlled phase e^{iθ} on |11⟩.",
+        "Partial Entangle": "Use smaller rotation angles before CNOT to create partial entanglement.",
+        "GHZ": "(|000⟩+|111⟩)/√2 — three‑qubit “all together” correlation.",
+        "Grover": "Amplitude amplification to highlight a marked state.",
+        "Oracle": "Phase flip on the target state(s) encodes “which one” to find.",
+        "Diffusion": "Reflect amplitudes about their mean to boost the marked state.",
+        "Amplitude Amp": "Repeat oracle+diffusion to raise success probability (don’t overshoot).",
+        "QFT": "Quantum Fourier Transform — reveals periodic structure in phases.",
+        "Shor (idea)": "Find periods via QFT to factor integers.",
+        "Periodicity": "Periodic patterns in function values map to peaks after QFT.",
+        "TSP (toy)": "Phase‑score routes, then diffuse to amplify the best. Teaching demo, not optimal.",
+        "Noise": "Bit/phase flips and depolarizing noise degrade interference.",
+        "Error Mitigation": "Practical tricks to compensate for noise on today’s devices."
+      };
+
+      const conceptCompare = {
+        "Vision": ["Static software", "Cognitive systems"],
+        "Cognitive Core": ["Data silos", "Unified reasoning core"],
+        "Agentic Workflows": ["Manual handoffs", "Autonomous orchestration"],
+        "Context Engineering": ["Generic prompts", "Relevant business context"],
+        "Deterministic Path": ["Fragile logic", "Reliable systems of record"],
+        "AI-Native Path": ["Isolated AI features", "Adaptive intelligence in flow"],
+        "Flywheel": ["One-off improvements", "Compounding feedback loop"],
+        "Trust": ["Opaque decisions", "Explainable outcomes"],
+        "Autonomy": ["Reactive systems", "Proactive agents"],
+        "UX": ["Static forms", "Intent-driven UI"],
+        "Joule": ["Manual navigation", "Copilot orchestration"],
+        "Adaptive UI": ["One-size screens", "Dynamic UI per task"],
+        "Human-in-the-Loop": ["Unchecked automation", "Human-approved actions"],
+        "Multimodal": ["Single channel", "Voice+text+visual"],
+        "Design Tokens": ["Hard-coded UI", "Adaptive design system"],
+        "Personalization": ["Generic UX", "Contextual experiences"],
+        "Guided Actions": ["Hidden next steps", "Recommended actions"],
+        "Explainability": ["Black box", "Transparent reasoning"],
+        "Accessibility": ["Afterthought", "Built-in inclusion"],
+        "AI Foundation": ["Ad-hoc AI", "Governed AI OS"],
+        "Data and Knowledge": ["Raw data", "Trusted data products"],
+        "Knowledge Graph": ["Disconnected metadata", "Semantic links"],
+        "Semantic Layer": ["Inconsistent meaning", "Unified semantics"],
+        "Agentic RAG": ["Static retrieval", "Adaptive retrieval"],
+        "Grounding": ["Hallucinations", "Enterprise truth"],
+        "Skills Library": ["Rebuilt skills", "Reusable services"],
+        "Model Services": ["Unmanaged models", "Curated model hub"],
+        "Orchestration": ["Single agent", "Multi-agent coordination"],
+        "Platform": ["Fragmented tools", "Unified platform"],
+        "BTP": ["Custom infra", "SAP BTP foundation"],
+        "Application Foundation": ["Duplicated services", "Shared runtime services"],
+        "Integration": ["Point-to-point", "Governed connectivity"],
+        "Observability": ["Blind ops", "Measurable AI"],
+        "Security": ["Per-app auth", "Unified identity & policy"],
+        "Extensibility": ["Closed systems", "Open extensions"],
+        "Identity": ["Local users", "Unified identity"],
+        "Telemetry": ["No signals", "Continuous insights"],
+        "Dev Experience": ["Slow builds", "Accelerated delivery"],
+        "Ecosystem": ["Isolated partners", "Connected marketplace"],
+        "ORD": ["Hidden capabilities", "Discoverable metadata"],
+        "A2A": ["Isolated agents", "Collaborating agents"],
+        "Resilient Cloud": ["Manual recovery", "Resilient ops"],
+        "Operations": ["Reactive support", "Intelligent ops"],
+        "Marketplace": ["Sparse extensions", "Rich ecosystem"],
+        "Partner Tools": ["Limited reach", "Co-innovation"],
+        "Data Products": ["Raw extracts", "Curated products"],
+        "Agent Registry": ["Unknown agents", "Trusted catalog"],
+        "Governed Access": ["Free access", "Policy gates"],
+        "Governance": ["Static policy", "Continuous governance"],
+        "Compliance": ["Manual audits", "Automated compliance"],
+        "Privacy": ["Ad-hoc controls", "Privacy by design"],
+        "Resilience": ["Single region", "Global failover"],
+        "Policy Engines": ["Manual checks", "Runtime policy"],
+        "Auditability": ["No trace", "Full traceability"],
+        "Risk Controls": ["Reactive risk", "Proactive safeguards"],
+        "Evolution": ["Static docs", "Living architecture"],
+        "Ethics": ["Implicit norms", "Explicit values"]
+      };
+
+      function updateLevelUI() {
+        levelBox.textContent = `Level ${levelIndex + 1}/${levels.length}`;
+        centerText.textContent = levels[levelIndex].name.toUpperCase();
+      }
+
+      function showLevelComplete() {
+        levelTitle.textContent = "Chapter Complete";
+        levelText.textContent = "Answer the quiz to unlock the next chapter.";
+        startQuiz();
+        levelModal.classList.add('show');
+      }
+
+      function advanceLevel() {
+        if (levelIndex < levels.length - 1) {
+          levelIndex += 1;
+          currentConceptIndex = 0;
+          updateLevelUI();
+          waitingForNext = false;
+          levelModal.classList.remove('show');
+          ensureDiscs();
+        } else {
+          levelTitle.textContent = "Journey Complete";
+          levelText.textContent = "You have captured all North Star chapters.";
+        }
+      }
+
+      function showLearn(label) {
+        learnTitle.textContent = label;
+        learnBody.textContent = conceptBlurbs[label] || "Quantum concept captured.";
+        learnTakeaway.textContent = `Takeaway: ${conceptBlurbs[label] || "Quantum insight."}`;
+        const compare = conceptCompare[label];
+        if (compare) {
+          learnOld.textContent = `Old: ${compare[0]}`;
+          learnNew.textContent = `North Star: ${compare[1]}`;
+        } else {
+          learnOld.textContent = "";
+          learnNew.textContent = "";
+        }
+        learnCard.classList.add('show');
+        setTimeout(() => learnCard.classList.remove('show'), 2800);
+      }
+
+      let quizIndex = 0;
+      let quizCorrect = 0;
+
+      function startQuiz() {
+        quizIndex = 0;
+        quizCorrect = 0;
+        nextBtn.disabled = true;
+        renderQuizQuestion();
+      }
+
+      function renderQuizQuestion() {
+        quizOptions.innerHTML = "";
+        const questions = levels[levelIndex].quiz;
+        const current = questions[quizIndex];
+        levelText.textContent = `${quizIndex + 1}/${questions.length}: ${current.q}`;
+        current.options.forEach(opt => {
+          const btn = document.createElement("button");
+          btn.className = "quizBtn";
+          btn.textContent = opt;
+          btn.addEventListener("click", () => {
+            if (opt === current.correct) {
+              btn.classList.add("correct");
+              quizCorrect += 1;
+              if (quizIndex < questions.length - 1) {
+                quizIndex += 1;
+                setTimeout(renderQuizQuestion, 400);
+              } else {
+                levelText.textContent = "Quiz complete. Ready for the next chapter.";
+                nextBtn.disabled = false;
+              }
+            } else {
+              btn.classList.add("wrong");
+              levelText.textContent = "Not quite. Try again.";
+            }
+          });
+          quizOptions.appendChild(btn);
+        });
+      }
+
+      function spawnBurst(position) {
+        for (let i = 0; i < 18; i++) {
+          const geo = new THREE.CircleGeometry(0.06, 8);
+          const mat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.9 });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.position.copy(position);
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 0.02 + Math.random() * 0.03;
+          particles.push({
+            mesh,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 35
+          });
+          scene.add(mesh);
+        }
+      }
+
+      function createTarget(label, role) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256; canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#0b1120';
+        ctx.fillRect(0,0,256,256);
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(16, 16, 224, 224);
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillRect(16, 180, 224, 60);
+        ctx.fillStyle = '#0b1120';
+        ctx.font = '18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, 128, 214);
+        ctx.fillStyle = '#e5e7eb';
+        ctx.font = '22px sans-serif';
+        ctx.fillText(role, 128, 90);
+        // Simple character icon
+        ctx.fillStyle = '#e5e7eb';
+        ctx.beginPath();
+        ctx.arc(128, 130, 26, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0b1120';
+        ctx.fillRect(96, 160, 64, 40);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+        const mesh = new THREE.Mesh(discGeo, mat);
+
+        const edge = Math.floor(Math.random() * 4);
+        const dist = 6.5;
+        let x = 0, y = 0;
+        if (edge === 0) { x = -dist; y = (Math.random()-0.5)*4; }
+        if (edge === 1) { x = dist; y = (Math.random()-0.5)*4; }
+        if (edge === 2) { y = dist; x = (Math.random()-0.5)*4; }
+        if (edge === 3) { y = -dist; x = (Math.random()-0.5)*4; }
+
+        mesh.position.set(x, y, -2);
+        const dir = new THREE.Vector3(-x, -y, 0).normalize();
+        const speed = levels[levelIndex].speed;
+        mesh.userData = { label, role, velocity: dir.multiplyScalar(speed) };
+        scene.add(mesh);
+        return mesh;
+      }
+
+      function ensureDiscs() {
+        if (waitingForNext) return;
+        const pool = levels[levelIndex].concepts;
+        if (discs.length === 0 && currentConceptIndex < pool.length) {
+          const label = pool[currentConceptIndex];
+          const role = levels[levelIndex].name;
+          discs.push(createTarget(label, role));
+        }
+      }
+
+      function hitVFX(isHit) {
+        hitText.textContent = isHit ? "HIT" : "MISS";
+        hitText.className = isHit ? "hit" : "miss";
+        setTimeout(() => hitText.className = "", 250);
+      }
+
+      function playTone(freq, dur=0.1, vol=0.05) {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.value = vol;
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(); osc.stop(ctx.currentTime + dur);
+        } catch {}
+      }
+
+      function collectIfHovering(screenX, screenY) {
+        const now = performance.now();
+        if (now - lastShotTime < 200) return;
+
+        let target = null;
+        let best = Infinity;
+        discs.forEach(d => {
+          const v = d.position.clone().project(camera);
+          const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+          const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+          const dist = Math.hypot(x - screenX, y - screenY);
+          if (dist < best) { best = dist; target = d; }
+        });
+
+        const hitDist = 90;
+        if (target && best < hitDist) {
+          if (hoverTargetId !== target.uuid) {
+            hoverTargetId = target.uuid;
+            hoverStart = now;
+            return;
+          }
+          if (now - hoverStart < 180) return;
+          lastShotTime = now;
+          scene.remove(target);
+          discs.splice(discs.indexOf(target), 1);
+          score += 100 * streak;
+          streak = Math.min(streak + 1, 5);
+          playTone(880);
+          hitVFX(true);
+          showLearn(target.userData.label);
+          spawnBurst(target.position.clone());
+          scoreEl.textContent = `Score: ${score}`;
+          streakEl.textContent = `Streak: x${streak}`;
+          levelHits += 1;
+          currentConceptIndex += 1;
+          if (currentConceptIndex >= levels[levelIndex].concepts.length) {
+            waitingForNext = true;
+            showLevelComplete();
+          } else {
+            ensureDiscs();
+          }
+        } else {
+          hoverTargetId = null;
+        }
+      }
+
+      function updateDiscs() {
+        for (let i = discs.length - 1; i >= 0; i--) {
+          const d = discs[i];
+          d.position.add(d.userData.velocity);
+          const dist = Math.hypot(d.position.x, d.position.y);
+          if (dist < 0.6 || Math.abs(d.position.x) > 7 || Math.abs(d.position.y) > 5) {
+            scene.remove(d);
+            discs.splice(i, 1);
+          }
+        }
+        ensureDiscs();
+      }
+
+      function updateParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.mesh.position.x += p.vx;
+          p.mesh.position.y += p.vy;
+          p.life -= 1;
+          p.mesh.material.opacity = Math.max(0, p.life / 35);
+          if (p.life <= 0) {
+            scene.remove(p.mesh);
+            particles.splice(i, 1);
+          }
+        }
+      }
+
+      function magnetAim(x, y) {
+        let nearest = null;
+        let best = Infinity;
+        discs.forEach(d => {
+          const dx = d.position.x - x;
+          const dy = d.position.y - y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < best) { best = dist; nearest = d; }
+        });
+        if (nearest && best < 4.2) {
+          crosshair.position.x += (nearest.position.x - x) * 0.55;
+          crosshair.position.y += (nearest.position.y - y) * 0.55;
+        } else {
+          crosshair.position.x = x;
+          crosshair.position.y = y;
+        }
+      }
+
+      function updateLaser() {
+        laser.geometry.setFromPoints([
+          new THREE.Vector3(crosshair.position.x, crosshair.position.y, 0),
+          new THREE.Vector3(crosshair.position.x, crosshair.position.y, -3)
+        ]);
+      }
+
+      const videoElement = document.getElementById('video');
+      const hands = new Hands({
+        locateFile: (file) => `vendor/mediapipe/${file}`
+      });
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.7
+      });
+
+      let gotFirstResult = false;
+      const setProgress = (percent, text) => {
+        bar.style.width = `${percent}%`;
+        percentLine.textContent = `${percent}%`;
+        if (text) statusLine.textContent = text;
+      };
+
+      const drawLandmarks = (landmarks) => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        landmarksCanvas.width = w;
+        landmarksCanvas.height = h;
+        landmarksCtx.clearRect(0, 0, w, h);
+        const indexTip = landmarks[8];
+        const indexPip = landmarks[6];
+        const x = (1 - indexTip.x) * w;
+        const y = indexTip.y * h;
+        landmarksCtx.fillStyle = 'rgba(34,211,238,0.9)';
+        landmarksCtx.beginPath();
+        landmarksCtx.arc(x, y, 8, 0, Math.PI * 2);
+        landmarksCtx.fill();
+        landmarksCtx.strokeStyle = 'rgba(34,211,238,0.6)';
+        landmarksCtx.lineWidth = 3;
+        landmarksCtx.beginPath();
+        landmarksCtx.moveTo((1 - indexPip.x) * w, indexPip.y * h);
+        landmarksCtx.lineTo(x, y);
+        landmarksCtx.stroke();
+        // Only show index pointer
+      };
+
+      hands.onResults((results) => {
+        try {
+          if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) return;
+          if (!gotFirstResult) {
+            gotFirstResult = true;
+            setProgress(100, "Ready: Hand detected");
+            overlay.style.display = "none";
+          }
+          drawLandmarks(results.multiHandLandmarks[0]);
+          const lm = results.multiHandLandmarks[0];
+          const indexTip = lm[8];
+          const thumbTip = lm[4];
+
+          const x = (indexTip.x - 0.5) * 6.2;
+          const y = (0.5 - indexTip.y) * 4.6;
+
+          magnetAim(x, y);
+          updateLaser();
+          const screenX = (1 - indexTip.x) * window.innerWidth;
+          const screenY = indexTip.y * window.innerHeight;
+          collectIfHovering(screenX, screenY);
+        } catch (err) {
+          console.warn("Gesture loop error:", err);
+        }
+      });
+
+      const cameraUtils = new Camera(videoElement, {
+        onFrame: async () => {
+          const now = performance.now();
+          if (now - lastDetectionTime > 33) {
+            lastDetectionTime = now;
+            try {
+              await hands.send({ image: videoElement });
+            } catch (err) {
+              console.warn("Hands error:", err);
+            }
+          }
+        },
+        width: 640,
+        height: 480
+      });
+
+      let loadTimeout;
+      videoElement.addEventListener('loadeddata', () => {
+        setProgress(45, "Step 2/3: Camera stream active");
+        statusText.textContent = "Camera ready. Show your hand.";
+        cameraFeed.srcObject = videoElement.srcObject;
+      });
+
+      async function init() {
+        try {
+          setProgress(15, "Step 1/3: Loading local AI assets");
+          debugLine.textContent = "Using local MediaPipe + Three.js assets.";
+          statusLine.textContent = "Step 2/3: Requesting camera access";
+          loadTimeout = setTimeout(() => {
+            if (!gotFirstResult) {
+              statusText.textContent = "Still loading. Please allow camera and wait a moment.";
+              statusLine.textContent = "If blocked, enable camera permissions and refresh.";
+            }
+          }, 6000);
+          try {
+            await navigator.mediaDevices.getUserMedia({ video: true });
+            debugLine.textContent = "Camera permission granted.";
+          } catch (err) {
+            debugLine.textContent = "Camera permission blocked. Enable it and retry.";
+          }
+          await cameraUtils.start();
+          preview.srcObject = videoElement.srcObject;
+          setProgress(66, "Step 3/3: Warming up gesture model");
+          ensureDiscs();
+          render();
+        } catch (e) {
+          console.error(e);
+          statusText.textContent = "Camera access failed. Please allow permissions.";
+          statusLine.textContent = "If you denied access, enable camera and refresh.";
+        }
+      }
+
+      function render() {
+        updateDiscs();
+        updateParticles();
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      }
+
+      window.addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+        landmarksCanvas.width = innerWidth;
+        landmarksCanvas.height = innerHeight;
+      });
+
+      retryBtn.addEventListener('click', () => {
+        statusText.textContent = "Retrying load...";
+        debugLine.textContent = "";
+        init();
+      });
+
+      nextBtn.addEventListener('click', advanceLevel);
+      updateLevelUI();
+      init();
+      }
+    </script>
+  </body>
+</html>

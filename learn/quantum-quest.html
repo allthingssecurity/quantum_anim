@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quantum Quest — Learn by Discovery</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <style>
+    :root { --bg:#05070f; --text:#e6edf3; --accent:#22d3ee; --accent2:#f43f5e; }
+    body { background: var(--bg); color: var(--text); }
+    .grid { display:grid; grid-template-columns:1.1fr 0.9fr; gap:18px }
+    #qq-canvas { width:100%; height:420px; background:#0f1620; border:1px solid var(--border); border-radius:12px }
+    #qq-overlay { position:fixed; inset:0; display:grid; place-items:center; background: radial-gradient(circle at top, rgba(34,211,238,0.18), transparent 60%), #05070f; }
+    #qq-card { background: rgba(7,10,18,0.9); border: 1px solid rgba(34,211,238,0.4); padding: 22px 26px; border-radius: 16px; box-shadow: 0 0 40px rgba(34,211,238,0.2); max-width: 520px; text-align:center }
+    #qq-hud { display:flex; gap:8px; margin-bottom:8px }
+    .hudbox { background: rgba(2,6,23,0.7); border: 1px solid rgba(34,211,238,0.3); padding: 8px 12px; border-radius: 10px; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase }
+    #qq-learnCard { background: rgba(2,6,23,0.9); border: 1px solid rgba(34,211,238,0.4); border-radius: 12px; padding: 12px 14px; box-shadow: 0 0 24px rgba(34,211,238,0.2) }
+    #qq-learnTitle { font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent) }
+    #qq-learnBody { margin-top:6px; font-size: 13px; color: var(--text) }
+    #qq-hist { height:160px }
+    pre { min-height: 110px }
+  </style>
+  </head>
+  <body>
+    <header>
+      <h1>Quantum Quest — Learn by Discovery</h1>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="js.html">JavaScript</a>
+        <a href="math-simple.html">QC Math</a>
+        <a href="qc-basics.html">QC Basics</a>
+        <a href="qc-explain.html">Quantum Concepts</a>
+        <a href="learn-track.html">Guided Track</a>
+        <a href="../playground/index.html">Playground</a>
+      </nav>
+    </header>
+    <div class="wrap">
+      <div class="grid">
+        <section class="card">
+          <div id="qq-hud">
+            <div class="hudbox" id="qq-score">Score: 0</div>
+            <div class="hudbox" id="qq-level">Level 1/6</div>
+          </div>
+          <canvas id="qq-canvas" width="800" height="400"></canvas>
+          <p class="note">Click glowing discs to “collect” concepts. Each disc applies a gate to the circuit and updates the histogram. Reach the star to complete the level.</p>
+        </section>
+        <aside class="card">
+          <h2>Concept Panel</h2>
+          <div id="qq-learnCard">
+            <div id="qq-learnTitle">Concept</div>
+            <div id="qq-learnBody">Click a disc to reveal the concept and update the circuit.</div>
+          </div>
+          <h3 style="margin-top:10px">Quantum Panel</h3>
+          <div class="toolbar">
+            <label>Shots</label>
+            <input id="qq-shots" type="number" min="1" max="100000" value="300" style="width:120px" />
+            <button id="qq-run">Run shots</button>
+            <button id="qq-reset">Reset level</button>
+          </div>
+          <h3>Program</h3>
+          <pre id="qq-code"></pre>
+          <h3>Histogram</h3>
+          <div id="qq-hist" class="bars"></div>
+        </aside>
+      </div>
+    </div>
+    <div id="qq-overlay">
+      <div id="qq-card">
+        <h2 style="margin:0 0 6px">Welcome to Quantum Quest</h2>
+        <p>Discover superposition, entanglement, interference, and Grover/TSP by collecting interactive targets. Each target updates the circuit and shows its effect on probabilities.</p>
+        <p class="note">Click anywhere to begin.</p>
+      </div>
+    </div>
+    <script src="../qcengine.js"></script>
+    <script src="assets/quantum-quest.js"></script>
+  </body>
+  </html>
+

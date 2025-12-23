@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Quantum AR Learn — Gesture Slides</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="assets/style.css" />
+    <style>
+      :root { --bg:#05070f; --text:#e6edf3; --accent:#22d3ee; --accent2:#f43f5e; }
+      html, body { margin:0; height:100%; background:var(--bg); color:var(--text); overflow:hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; }
+      #video { position:fixed; inset:0; object-fit:cover; z-index:1; transform: scaleX(-1); opacity: 0.85; }
+      #landmarks { position:fixed; inset:0; z-index:2; pointer-events:none; }
+      #hud { position:fixed; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; z-index:5; pointer-events:none; }
+      .box { background: rgba(2,6,23,0.7); border:1px solid rgba(34,211,238,0.3); padding:8px 12px; border-radius:10px; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; }
+      #overlay { position:fixed; inset:0; display:grid; place-items:center; background: radial-gradient(circle at top, rgba(34,211,238,0.16), transparent 60%), #05070f; z-index:10; }
+      #card { background: rgba(7,10,18,0.92); border:1px solid rgba(34,211,238,0.4); padding:22px 26px; border-radius:16px; box-shadow:0 0 40px rgba(34,211,238,0.2); max-width:520px; text-align:center; }
+      #learn { position:fixed; right:14px; top:80px; width:360px; z-index:6; background: rgba(2,6,23,0.9); border:1px solid rgba(34,211,238,0.4); border-radius:12px; padding:12px 14px; box-shadow:0 0 24px rgba(34,211,238,0.2); }
+      #title { font-size:14px; letter-spacing:0.2em; text-transform:uppercase; color:var(--accent); }
+      #body { margin-top:6px; font-size:13px; line-height:1.45; }
+      #takeaway { margin-top:10px; font-size:12px; color:#cbd5f5; }
+      #compare { margin-top:10px; display:grid; gap:6px; }
+      #compare div { background: rgba(15,23,42,0.8); padding:6px 8px; border-radius:8px; font-size:12px; }
+      #controls { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(2,6,23,0.7); border:1px solid rgba(34,211,238,0.3); padding:8px 12px; border-radius:10px; display:flex; gap:8px; z-index:6; }
+      #controls button { background:#0f1620; color:var(--text); border:1px solid #243041; border-radius:8px; padding:6px 10px; font-size:12px }
+      .disc { position:absolute; width:58px; height:58px; border-radius:50%; border:2px solid rgba(34,211,238,0.8); background: rgba(34,211,238,0.18); display:flex; align-items:center; justify-content:center; color:#e6edf3; font-size:12px; letter-spacing:0.12em; pointer-events:none; }
+      #levelModal { position:fixed; inset:0; display:grid; place-items:center; background:rgba(5,7,15,0.6); opacity:0; pointer-events:none; transition:opacity .2s }
+      #levelModal.show { opacity:1; pointer-events:auto; }
+      #levelCard { background: rgba(2,6,23,0.95); border:1px solid rgba(34,211,238,0.4); border-radius:18px; padding:18px 20px; width:380px; text-align:center; box-shadow:0 0 40px rgba(34,211,238,0.2) }
+      #quiz { margin-top: 10px; display:grid; gap:8px }
+      .quizBtn { background: rgba(34,211,238,0.15); color:#e5e7eb; border:1px solid rgba(34,211,238,0.4); padding:8px 10px; border-radius:10px; cursor:pointer; font-size:12px }
+      .quizBtn.correct { background: rgba(34,197,94,0.25); border-color: rgba(34,197,94,0.6) }
+      .quizBtn.wrong { background: rgba(244,63,94,0.25); border-color: rgba(244,63,94,0.6) }
+    </style>
+  </head>
+  <body>
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="landmarks"></canvas>
+    <div id="overlay"><div id="card">
+      <h2 style="margin:0 0 6px">Quantum AR Learn</h2>
+      <p>Use your index finger like a laser pointer. Hover a glowing disc to reveal a short slide. Clear all discs to unlock a quick quiz, then continue.</p>
+      <p class="note">Click to allow camera and begin.</p>
+    </div></div>
+    <div id="hud">
+      <div style="display:flex; gap:8px">
+        <div class="box" id="progress">Slide 1/6</div>
+        <div class="box" id="chapter">Chapter: Qubits</div>
+      </div>
+      <div class="box" id="status">Show your hand to start</div>
+    </div>
+    <div id="learn">
+      <div id="title">Title</div>
+      <div id="body">Content</div>
+      <div id="takeaway"></div>
+      <div id="compare"><div id="old"></div><div id="new"></div></div>
+    </div>
+    <div id="controls"><button id="prev">Prev</button><button id="next">Next</button></div>
+    <div id="levelModal"><div id="levelCard">
+      <h2 id="modalTitle">Quick Check</h2>
+      <div id="modalBody">Question</div>
+      <div id="quiz"></div>
+      <button id="modalNext">Next Chapter</button>
+    </div></div>
+    <script src="vendor/hands.js"></script>
+    <script src="vendor/camera_utils.js"></script>
+    <script src="assets/quantum-ar-learn.js"></script>
+  </body>
+  </html>
+
