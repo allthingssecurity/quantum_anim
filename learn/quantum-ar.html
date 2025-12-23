@@ -101,7 +101,7 @@
       }
       #learnCard.show { opacity: 1; transform: translateY(0); }
       #learnTitle { font-size: 14px; letter-spacing: 0.2em; text-transform: uppercase; color: #22d3ee; }
-      #learnBody { margin-top: 6px; font-size: 13px; line-height: 1.4; color: #e5e7eb; }
+      #learnBody { margin-top: 6px; font-size: 13px; line-height: 1.4; color: #e5e7eb; white-space: pre-wrap; }
       #learnTakeaway { margin-top: 8px; font-size: 12px; color: #cbd5f5; }
       #learnCompare { margin-top: 10px; font-size: 12px; display: grid; gap: 6px; }
       #learnCompare div { background: rgba(15,23,42,0.8); padding: 6px 8px; border-radius: 8px; }
@@ -192,13 +192,45 @@
     <script src="vendor/camera_utils.js"></script>
     <script>
       window.QUANTUM_BLURBS = {
-        "Qubit": "Qubits are like tiny arrows; |0⟩ is north, |1⟩ is south.",
-        "Hadamard": "Creates a fair quantum coin: |0⟩ → (|0⟩+|1⟩)/√2.",
-        "Phase": "Z/RZ change phase; visible via interference with H.",
-        "CNOT": "Flips target only when control is 1 — entanglement core.",
-        "Bell": "H on q0 + CNOT 0→1 → (|00⟩+|11⟩)/√2; only 00 or 11.",
-        "Grover": "Oracle marks target by phase; diffusion amplifies it.",
-        "TSP": "Score routes via phase; amplify the best one."
+        "Qubit": { body: "A qubit is |ψ⟩ = α|0⟩ + β|1⟩.\nα, β are complex numbers (magnitude + phase).\n|α|² + |β|² = 1 ensures valid probabilities.\nWe usually start in |0⟩ (north on Bloch sphere).\nGates rotate or phase‑shift this state.", takeaway: "Amplitudes carry probability and phase." },
+        "Basis |0⟩": { body: "|0⟩ is a basis state (certain 0 on measure).\nIt is the usual reset / start state.\nShown as the north pole on the Bloch sphere.\nOther states are superpositions of |0⟩ and |1⟩.", takeaway: "Fresh qubits begin at |0⟩." },
+        "Basis |1⟩": { body: "|1⟩ is the other basis state (certain 1).\nYou can reach it via an X (NOT) from |0⟩.\nShown as the south pole on the Bloch sphere.\nSuperpositions tilt between |0⟩ and |1⟩.", takeaway: "X maps |0⟩ ↔ |1⟩." },
+        "Bloch": { body: "Pure single‑qubit states live on the Bloch sphere.\nPoles are |0⟩ (north) and |1⟩ (south).\nEquator states (|+⟩, |−⟩, etc.) differ by phase.\nRotations (RX, RY, RZ) move the Bloch vector.", takeaway: "Geometry helps reason about gates." },
+        "Measurement": { body: "Measurement samples from current probabilities.\nThe state collapses to a basis vector.\nRunning many shots builds a histogram.\nInterference patterns only appear across gates, not in a single shot.", takeaway: "More shots → smoother estimates." },
+        "Probability": { body: "Outcome probabilities are |amplitude|².\nE.g., |ψ⟩ = α|0⟩ + β|1⟩ → P(0)=|α|², P(1)=|β|².\nGates linearly transform amplitudes.\nInterference modifies final probabilities.", takeaway: "Amplitudes → probabilities via squares." },
+        "Amplitude": { body: "Amplitudes have magnitude (probability weight) and phase.\nPhase does not show directly on measurement.\nBut it changes how paths add/cancel later.\nThis is the essence of quantum interference.", takeaway: "Relative phase drives interference." },
+        "Phase": { body: "Z / RZ apply phase shifts.\nAlone: probabilities unchanged.\nWith superposition + later H: outcomes change.\nThis is how subtle middle changes steer results.", takeaway: "Phase is power when combined." },
+        "Bit Order": { body: "We index |q1 q0⟩ (q0 is least‑significant).\nFor two qubits, index 3 = binary 11 = |q1=1, q0=1⟩.\nPay attention to control/target ordering in multi‑qubit gates.", takeaway: "Mind the control/target numbering." },
+        "State Vector": { body: "n qubits → 2^n complex amplitudes.\nThis full vector encodes all superpositions.\nGates are matrices; applying a gate multiplies the vector.\nMeasurement samples from the vector’s probabilities.", takeaway: "Linear algebra under the hood." },
+        "Hadamard": { body: "H maps |0⟩ → (|0⟩+|1⟩)/√2 (a fair coin).\nH maps |1⟩ → (|0⟩−|1⟩)/√2 (phase differs).\nH·H = I (doing H twice returns to start).\nH is the doorway to superposition.", takeaway: "Create fair superpositions." },
+        "|+⟩": { body: "|+⟩ = (|0⟩+|1⟩)/√2.\nMeasuring |+⟩ gives 0/1 ≈ 50/50.\nZ adds a phase on |1⟩ — changes interference with later H.", takeaway: "A balanced state on the equator." },
+        "|−⟩": { body: "|−⟩ = (|0⟩−|1⟩)/√2.\nSame probabilities as |+⟩ but different phase.\nH maps |−⟩ back to |1⟩.", takeaway: "Like |+⟩ but phase‑flipped." },
+        "RZ": { body: "RZ(φ) rotates around the Z‑axis.\nOnly phase changes (magnitudes stay the same).\nEffects appear when combined with H (interference).", takeaway: "Phase knob for interference." },
+        "Interference": { body: "Paths add or cancel depending on phase.\nClassic pattern: H → RZ → H.\nA small middle phase can flip the final outcome rate.\nThis is uniquely quantum.", takeaway: "Sum of paths with signs/phases." },
+        "Global Phase": { body: "Multiplying the entire state by e^{iφ} changes nothing observable.\nOnly relative phase between components matters.", takeaway: "Only differences in phase count." },
+        "RX vs RY": { body: "RX/RY tilt towards/away from poles.\nRY often used to set a precise probability split.\nRZ changes phase without changing split.", takeaway: "Choose the right rotation axis." },
+        "Coin Toss": { body: "H on |0⟩ behaves like a fair coin.\nOver many shots, histogram approaches 50/50.\nA phase sandwiched between H’s can bias it.", takeaway: "Superposition → randomness." },
+        "H·H = I": { body: "Two H’s cancel.\nInterference can undo earlier mixing.\nUseful trick for constructing gates.", takeaway: "Unmix a mix with H again." },
+        "CNOT": { body: "If control=1 then flip target.\nWith H on the control first, you entangle.\nCNOT is a workhorse for multi‑qubit logic.", takeaway: "Control‑dependent flipping." },
+        "Bell Φ+": { body: "H on q0 + CNOT 0→1 → (|00⟩+|11⟩)/√2.\nOnly 00 or 11 appear — perfectly correlated.\nMeasuring one determines the other.", takeaway: "Two‑qubit correlation beyond classical." },
+        "Bell Ψ+": { body: "(|01⟩+|10⟩)/√2.\nAnti‑correlated outcomes.\nDifferent Bell states differ by phase/X/Z combinations.", takeaway: "Another entangled pair pattern." },
+        "Correlation": { body: "Entanglement is not mere shared randomness.\nIt enforces structure on joint outcomes.\nKey resource in quantum protocols.", takeaway: "Shared fate of outcomes." },
+        "Control/Target": { body: "Order matters: CNOT(c,t) ≠ CNOT(t,c).\nPick roles carefully to entangle as intended.", takeaway: "Be explicit about direction." },
+        "Swap": { body: "Swap exchanges two qubits.\nOften synthesized by three CNOTs.\nUseful for routing states along a device.", takeaway: "Move states where needed." },
+        "CZ": { body: "Controlled‑Z adds −1 phase on |11⟩.\nAlters interference but not direct probabilities alone.", takeaway: "Phase‑based control." },
+        "CP": { body: "Controlled phase e^{iθ} on |11⟩.\nA generalization of CZ.", takeaway: "Tune the phase kick strength." },
+        "Partial Entangle": { body: "Use smaller rotations before CNOT.\nYou get tunable correlation strengths.\nHandy for demos of entanglement.", takeaway: "Not all entanglement is maximal." },
+        "GHZ": { body: "(|000⟩+|111⟩)/√2 ties three qubits together.\nMeasuring one constrains the others.\nPrepared by H on first, then chained CNOTs.", takeaway: "All‑together correlation." },
+        "Grover": { body: "Grover marks the target with a phase flip.\nDiffusion reflects about the mean to boost it.\nA few repetitions amplify success probability.", takeaway: "Make the right answer louder." },
+        "Oracle": { body: "Encodes the target(s) via a phase flip.\nIt’s a black‑box that “knows” what to mark.", takeaway: "Where the task is encoded." },
+        "Diffusion": { body: "H^n · (2|0⟩⟨0| − I) · H^n.\nReflect amplitudes about their average.\nBoosts marked states after the oracle.", takeaway: "Geometric reflection trick." },
+        "Amplitude Amp": { body: "Oracle + Diffusion repeated a few times.\nToo many rounds over‑shoot and reduce success.", takeaway: "There’s an optimal count." },
+        "QFT": { body: "Maps periodic structure into peaks.\nCore for phase estimation and Shor’s idea.\nBuilt from H + controlled phases.", takeaway: "Find hidden periods." },
+        "Shor (idea)": { body: "Use QFT to detect period of a modular function.\nFrom the period, infer factors.\nA showcase of quantum advantage.", takeaway: "Period → integer factors." },
+        "Periodicity": { body: "When f(x) repeats every r, QFT reveals r.\nInterference concentrates probability on multiples of N/r.", takeaway: "Measure peaks to read r." },
+        "TSP (toy)": { body: "Assign phases as scores to routes.\nDiffuse to amplify the best.\nA teaching analogy; not how large TSP is solved.", takeaway: "Phase as preference score." },
+        "Noise": { body: "Real devices have bit/phase flips & depolarization.\nNoise destroys delicate interference.", takeaway: "Mitigate or average it out." },
+        "Error Mitigation": { body: "Techniques like ZNE, measurement error mitigation, repetition.\nNot full error correction, but helps demos.", takeaway: "Practical robustness today." }
       };
     </script>
 
@@ -454,24 +486,28 @@
           ensureDiscs();
         } else {
           levelTitle.textContent = "Journey Complete";
-          levelText.textContent = "You have captured all North Star chapters.";
+          levelText.textContent = "You have captured all Quantum chapters.";
         }
       }
 
+      let cardHoverTicks = 0;
       function showLearn(label) {
         learnTitle.textContent = label;
-        learnBody.textContent = conceptBlurbs[label] || "Quantum concept captured.";
-        learnTakeaway.textContent = `Takeaway: ${conceptBlurbs[label] || "Quantum insight."}`;
-        const compare = conceptCompare[label];
-        if (compare) {
-          learnOld.textContent = `Old: ${compare[0]}`;
-          learnNew.textContent = `North Star: ${compare[1]}`;
+        const qb = (window.QUANTUM_BLURBS && window.QUANTUM_BLURBS[label]) || null;
+        if (qb && typeof qb === 'object') {
+          learnBody.textContent = qb.body || String(label);
+          learnTakeaway.textContent = qb.takeaway ? `Takeaway: ${qb.takeaway}` : '';
+        } else if (qb) {
+          learnBody.textContent = String(qb);
+          learnTakeaway.textContent = '';
         } else {
-          learnOld.textContent = "";
-          learnNew.textContent = "";
+          learnBody.textContent = 'Quantum concept';
+          learnTakeaway.textContent = '';
         }
+        learnOld.textContent = "";
+        learnNew.textContent = "";
         learnCard.classList.add('show');
-        setTimeout(() => learnCard.classList.remove('show'), 2800);
+        cardHoverTicks = 0; // require dwell to dismiss
       }
 
       let quizIndex = 0;
