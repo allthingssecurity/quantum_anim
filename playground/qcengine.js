@@ -81,7 +81,13 @@ const QCEngineRunner = {
         measure(i){ if (typeof i==='number'){ return state.readBit(i); } else { return state.sampleOutcome(); } },
       };
       const qint = { new(width,name){ return new QInt(state, width, name); } };
-      function diffusion(){ for (let i=0;i<state.n;i++) state.had(i); state.psi[0].re*=-1; state.psi[0].im*=-1; for (let i=0;i<state.n;i++) state.had(i); }
+      function diffusion(){
+        // Grover diffuser: H^n (2|0><0| - I) H^n
+        for (let i=0;i<state.n;i++) state.had(i);
+        // multiply all basis states except |0..0> by -1
+        for (let idx=1; idx<state.N; idx++){ state.psi[idx].re *= -1; state.psi[idx].im *= -1; }
+        for (let i=0;i<state.n;i++) state.had(i);
+      }
       const fn = new Function('qc','qint','diffusion', src);
       fn(qc, qint, diffusion);
       // If user measured all, state already collapsed. Otherwise sample once.

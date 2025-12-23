@@ -241,8 +241,17 @@
     if (levelBanner.t>0) levelBanner.t--;
     // Objective completion check
     const allDone = !objective.required || objective.required.every(id => gates.find(g=>g.id===id && g.done));
-    // goal star completion
-    if (allDone){ for (const goal of goals){ if (rect(player,goal)){ levelBanner.t=180; levelBanner.text='Level Complete'; setTimeout(()=> nextLevel(), 2000); goals=[]; break; } } }
+    // goal star completion (only when star exists)
+    if (goals.length>0 && allDone){
+      for (const goal of goals){
+        if (rect(player,goal)){
+          levelBanner.t=180; levelBanner.text='Level Complete';
+          setTimeout(()=> nextLevel(), 2000);
+          goals=[]; // clear to prevent retrigger
+          break;
+        }
+      }
+    }
   }
 
   function applyGate(g){
